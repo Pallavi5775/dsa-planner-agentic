@@ -20,3 +20,10 @@ streamlit run app.py
 - The frontend runs at http://localhost:8501
 
 You can now add questions, log practice, and view revision suggestions in your browser.
+
+cd backend
+uvicorn main:app --host 0.0.0.0 --port 8000 &
+
+
+cd ../frontend
+streamlit run app.py --server.port 8501 --server.address 0.0.0.0 &
