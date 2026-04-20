@@ -25,3 +25,26 @@ cd backend
 uvicorn main:app --host 0.0.0.0 --port 8000 &
 cd ../frontend
 streamlit run app.py --server.port 8501 --server.address 0.0.0.0 &
+
+redeploy
+ps aux | grep uvicorn
+ps aux | grep streamlit
+kill <PID>
+
+
+cd /path/to/DSA_PROGRAM_REVISION
+git pull
+
+
+cd backend
+pip install -r requirements.txt
+cd ../frontend
+pip install -r requirements.txt
+
+
+cd /path/to/DSA_PROGRAM_REVISION/backend
+uvicorn main:app --host 0.0.0.0 --port 8000 &
+
+
+cd /path/to/DSA_PROGRAM_REVISION/frontend
+streamlit run app.py --server.port 8501 --server.address 0.0.0.0 &
