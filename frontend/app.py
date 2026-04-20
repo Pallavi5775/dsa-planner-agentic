@@ -13,7 +13,7 @@ import pandas as pd
 import time
 from streamlit_autorefresh import st_autorefresh
 
-API_URL = "http://localhost:8000"
+API_URL = 'http://localhost:8000/api'
 
 # --- Configuration ---
 st.set_page_config(layout="wide", page_title="DSA Revision Planner")
