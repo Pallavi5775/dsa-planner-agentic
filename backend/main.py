@@ -1,3 +1,4 @@
+from fastapi import UploadFile, File
 import os
 import re
 import json
@@ -169,7 +170,95 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# --- Endpoint: Upload MD file and add questions to data.json ---
+@app.post("/upload_md")
+async def upload_md(file: UploadFile = File(...)):
+    if not file.filename.endswith(".md"):
+        raise HTTPException(status_code=400, detail="Only .md files are supported.")
+    content = await file.read()
+    content = content.decode("utf-8")
+    # Parse questions from uploaded content
+    pattern_blocks = re.split(r"## ", content)[1:]
+    new_questions = []
+    for block in pattern_blocks:
+        lines = block.splitlines()
+        if not lines:
+            continue
+        pattern = lines[0].split("(")[0].strip()
+        for line in lines[1:]:
+            m = re.match(r"\d+\. (.+)", line.strip())
+            if m:
+                new_questions.append({
+                    "title": m.group(1).strip(),
+                    "pattern": pattern,
+                    "category": "Mixed",
+                    "coverage_status": "Not Covered",
+                    "revision_status": "Pending",
+                    "logs": [],
+                    "next_revision": None,
+                    "ease_factor": 2.5,
+                    "interval_days": 0,
+                    "total_time_spent": 0,
+                    "accuracy": None,
+                    "suggestions": None,
+                    "difficulty": "Medium"
+                })
+    if not new_questions:
+        raise HTTPException(status_code=400, detail="No questions found in uploaded file.")
+    # Load existing data and add new questions with unique IDs
+    data = load_data()
+    titles = set(q['title'] for q in data)
+    next_id = max([q['id'] for q in data], default=0) + 1
+    added = 0
+    for q in new_questions:
+        if q['title'] not in titles:
+            q['id'] = next_id
+            next_id += 1
+            data.append(q)
+            added += 1
+    save_data(data)
+    return {"added": added, "total": len(data)}
+# --- Helper: Update all fields except logs in a question dict ---
+def update_question_fields_except_logs(question, new_data):
+    """
+    Updates all fields in question except 'logs' with values from new_data.
+    """
+    for k, v in new_data.items():
+        if k != 'logs':
+            question[k] = v
+    return question
 
+
+
+# --- Formatting Helper for Frontend Display ---
+def format_dsa_feedback(data):
+        """
+        Returns a formatted string for displaying DSA feedback in the frontend chat area.
+        """
+        gap_analysis = data.get("gap_analysis", "")
+        correction_suggestion = data.get("correction_suggestion", "")
+        uf = data.get("updated_fields", {})
+        return f'''
+<div style="margin-bottom:1em;">
+    <h4>Gap Analysis</h4>
+    {gap_analysis}
+</div>
+<div style="margin-bottom:1em;">
+    <h4>Correction Suggestion</h4>
+    <div style="background:#f8f8fa; border-left:4px solid #eebbc3; padding:8px; border-radius:4px;">{correction_suggestion}</div>
+</div>
+<div style="margin-bottom:1em;">
+    <h4>Updated Fields</h4>
+    <ul style="margin:0 0 0 1em;">
+        <li><b>Accuracy:</b> {uf.get('accuracy', '')}%</li>
+        <li><b>Revision Status:</b> {uf.get('revision_status', '')}</li>
+        <li><b>Next Revision:</b> {uf.get('next_revision', '')}</li>
+        <li><b>Ease Factor:</b> {uf.get('ease_factor', '')}</li>
+        <li><b>Interval Days:</b> {uf.get('interval_days', '')}</li>
+        <li><b>Suggestions:</b> {uf.get('suggestions', '')}</li>
+    </ul>
+</div>
+'''
 @app.post("/sync_questions")
 def api_sync_questions():
     sync_questions()
@@ -255,43 +344,126 @@ def update_status(
 
 @app.post("/questions/{qid}/validate")
 def validate_question(qid: int):
-    data = load_data()
-    question = next((q for q in data if q['id'] == qid), None)
+    data_list = load_data()
+    question = next((q for q in data_list if q['id'] == qid), None)
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
-    payload = {k: v for k, v in question.items() if k != 'logs'}
-    payload['log'] = question['logs'][-1] if question['logs'] else {}
     prompt = f"""
-You are an expert DSA tutor. Given the following question and a student's latest session log, analyze if the solution is correct and provide a gap analysis. Respond in JSON with fields: correct (true/false), gap_analysis (HTML string, formatted for direct display in a web app, not plain text).
+You are an expert DSA Tutor and Spaced Repetition System (SRS). 
+Your task is to analyze a student's session and update the question metadata.
 
-Question:
-{payload['title']} (Pattern: {payload['pattern']})
-Category: {payload['category']}
-Revision Status: {payload['revision_status']}
+### 📥 INPUT DATA (Current Question Object):
+{json.dumps(question, ensure_ascii=False)}
 
-Student Log:
-Logic: {payload['log'].get('logic', '')}
-Code: {payload['log'].get('code', '')}
-Time Taken: {payload['log'].get('time_taken', '')} minutes
+### 🎯 TASK 1: VALIDATION
+- If the input is empty or complete keyboard mashing, mark `correct = false`.
+- If the student attempts a solution but uses the wrong strategy (e.g., Sorting by Start Time), mark `correct = false` but acknowledge that it was a **valid attempt at a sub-optimal strategy**.
+
+### 🎯 TASK 2: TECHNICAL ANALYSIS (Activity Selection)
+- Strategy Matching: Compare the student's logic and code against the optimal strategy for the {question['pattern']} pattern and the specific problem {question['title']}.
+- The "Why" Analysis: 
+      - If Correct: Explain why this specific greedy choice (or logic) leads to the global optimum.
+      - If Incorrect: Explain the "Greedy Trap" or logical flaw they fell into (e.g., "Sorting by start time fails because a long early task can block multiple shorter tasks").
+- Complexity Check: Verify if the time complexity matches the optimal $O(n \log n)$ or $O(n)$.
+
+
+### 🎯 TASK 3: METADATA UPDATE (SRS Logic)
+Update the following fields in the `updated_question`:
+1. **accuracy**: 0-100 based on the current attempt.
+2. **coverage_status**: Set to "Covered" only if a valid attempt was made.
+3. **revision_status**: 
+    - "Mastered" if accuracy > 90%.
+    - "Needs Work" if accuracy < 60% but is a valid attempt.
+    - "Pending" if the attempt was gibberish.
+4. **ease_factor (EF)**: 
+    - Decrease EF if accuracy is low. 
+    - If accuracy < 60%, set $EF = max(1.3, EF - 0.2)$.
+5. **interval_days**: 
+    - If wrong/gibberish, set to 1 day. 
+    - If correct, $Interval = Interval \times EF$.
+6. **next_revision**: Calculate the date based on `today` (2026-04-20) + `interval_days`.
+7. **suggestions**: Create a concise, one-sentence summary of WHY the attempt succeeded or failed based on the "Why Analysis" in Task 2. (e.g., "Correct! Sorting by finish time minimizes room usage.")
+
+### 📋 JSON RESPONSE REQUIREMENTS:
+Return ONLY a valid JSON object. No markdown. No preamble.
+**Required Schema:**
+{{
+    "correct": boolean,
+    "gap_analysis": "HTML string...",
+    "gap_explanation": "Plain text...",
+    "correction_suggestion": "The optimal implementation hint...",
+    "updated_fields": {{
+        "accuracy": float,
+        "revision_status": "string",
+        "next_revision": "YYYY-MM-DD",
+        "ease_factor": float,
+        "interval_days": int,
+        "suggestions": "A concise summary of WHY their approach worked or failed. Example: 'Correct! Sorting by finish time works because it minimizes the resource usage per task. Keep it up!'"
+    }}
+}}
 """
     try:
         import openai
         openai.api_key = os.getenv("OPENAI_API_KEY")
         client = openai.OpenAI()
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "system", "content": "You are a helpful assistant."},
-                      {"role": "user", "content": prompt}],
-            max_tokens=256,
-            temperature=0.2
-        )
-        import json as pyjson
-        import re
-        content = response.choices[0].message.content
-        match = re.search(r'\{.*\}', content, re.DOTALL)
-        if match:
-            return pyjson.loads(match.group(0))
+    model="gpt-4o-mini", # 4o-mini is much better at avoiding hallucinations than 3.5
+    messages=[
+        {"role": "system", "content": "You are a strict DSA tutor. If input is gibberish, mark it incorrect. Output strictly JSON."},
+        {"role": "user", "content": prompt}
+    ],
+    response_format={ "type": "json_object" },
+    max_tokens=1000,
+    temperature=0 # Zero temperature prevents creative hallucinations
+)
+        
+
+        def safe_parse_dsa_response(raw_text):
+            try:
+                # 1. Strip whitespace
+                text = raw_text.strip()
+                
+                # 2. Extract JSON if AI wrapped it in ```json blocks
+                json_match = re.search(r"\{.*\}", text, re.DOTALL)
+                if json_match:
+                    text = json_match.group(0)
+                
+                # 3. Final attempt to load
+                return json.loads(text)
+            except json.JSONDecodeError as e:
+                # Debugging: Find exactly where the character error is
+                print(f"Failed at char {e.pos}: {raw_text[max(0, e.pos-20):e.pos+20]}")
+                return None
+
+        raw_response = response.choices[0].message.content
+        raw_response = raw_response.strip()
+        data = safe_parse_dsa_response(raw_response)
+         
+    
+         
+        if data and "updated_fields" in data:
+            # 1. Extract the new values from the AI
+            updates = data["updated_fields"]
+
+            # 2. Update all fields except logs
+            update_question_fields_except_logs(question, updates)
+
+            # 3. Explicitly set statuses based on AI 'correct' field
+            if data.get("correct"):
+                question["coverage_status"] = "Covered"
+                question["revision_status"] = "Mastered"
+            else:
+                question["coverage_status"] = "Covered"
+                question["revision_status"] = "Needs Work"
+
+            # 4. Persistence: Write the updated list back to your JSON file
+            with open("data.json", "w", encoding="utf-8") as f:
+                json.dump(data_list, f, indent=4, ensure_ascii=False)
+
+            print(f"✅ Metadata updated for: {question['title']}")
         else:
-            return {"correct": False, "gap_analysis": content.strip()}
+            print("❌ AI returned invalid structure or gibberish.")
+        return data
+ 
     except Exception as e:
         return {"correct": False, "gap_analysis": f"OpenAI validation failed: {e}"}

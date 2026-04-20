@@ -1,3 +1,11 @@
+# --- Helper: Load data.json and get question by qid ---
+import json
+import os
+def get_question_by_qid(qid):
+    data_path = os.path.join(os.path.dirname(__file__), '../backend/data.json')
+    with open(data_path, 'r', encoding='utf-8') as f:
+        questions = json.load(f)
+    return next((q for q in questions if q['id'] == qid), None)
 import streamlit as st
 import requests
 from datetime import datetime
@@ -63,7 +71,26 @@ clock_placeholder = st.empty()
 clock_placeholder.markdown(f"### 🕒 {datetime.now().strftime('%H:%M:%S')}")
 
 # --- TABS ---
-tabs = st.tabs(["View Questions", "Log Practice", "Sync"])
+tabs = st.tabs(["View Questions", "Add Questions"])
+
+# --- TAB 1: ADD QUESTIONS ---
+with tabs[1]:
+    st.subheader("Upload .md File to Add Questions")
+    uploaded_md = st.file_uploader("Choose a Markdown (.md) file", type=["md"])
+    upload_btn = st.button("Upload and Add Questions", disabled=uploaded_md is None)
+    if upload_btn and uploaded_md is not None:
+        with st.spinner("Uploading and processing file..."):
+            files = {"file": (uploaded_md.name, uploaded_md.getvalue(), "text/markdown")}
+            try:
+                resp = requests.post(f"{API_URL}/upload_md", files=files)
+                if resp.status_code == 200:
+                    result = resp.json()
+                    st.success(f"Added {result['added']} new questions. Total now: {result['total']}.")
+                    st.rerun()
+                else:
+                    st.error(f"Upload failed: {resp.text}")
+            except Exception as e:
+                st.error(f"Error uploading file: {e}")
 
 # --- TAB 0: VIEW QUESTIONS ---
 with tabs[0]:
@@ -114,35 +141,42 @@ if st.session_state.active_qid:
     q = next((item for item in questions if item['id'] == st.session_state.active_qid), None)
 
     if q:
+
         with st.sidebar:
             st.markdown(f"## 📝 {q['title']}")
-            # Using st.metric prevents the UI from "jumping" during refreshes
             st.metric("⏱️ Session Timer", f"{mins:02d}:{secs:02d}")
+
+            # --- Load the latest question object from data.json and display up-to-date fields ---
+            qid = q['id']
+            q_latest = get_question_by_qid(qid)
+            st.markdown(
+                f"""
+                <div style='font-size:0.95em; background:#f8f8fa; border-radius:6px; padding:8px 12px; margin:6px 0; border:1px solid #eebbc3;'>
+                    <b>Status:</b> {q_latest.get('coverage_status', '')}<br>
+                    <b>Revision:</b> {q_latest.get('revision_status', '')}<br>
+                    <b>Next:</b> {q_latest.get('next_revision', '')}<br>
+                    <b>EF:</b> {q_latest.get('ease_factor', '')} | <b>Interval:</b> {q_latest.get('interval_days', '')}d<br>
+                    <b>Time:</b> {q_latest.get('total_time_spent', '')}m | <b>Acc:</b> {q_latest.get('accuracy', 0)}%<br>
+                    <b>Diff:</b> {q_latest.get('difficulty', '')}<br>
+                    <span style='color:#b22222'>{q_latest.get('suggestions', '')}</span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
             # Use unique keys for text areas to prevent state loss during refresh
             new_logic = st.text_area("Logic", value=q.get('logic', ''), key="logic_input")
             new_code = st.text_area("Code", value=q.get('code', ''), key="code_input")
-            
-            c1, c2 = st.columns(2)
-            with c1:
-                new_rev = st.selectbox("Revision", ["Pending", "Weak", "Strong"], 
-                                     index=["Pending", "Weak", "Strong"].index(q.get('revision_status', 'Pending')))
-            with c2:
-                new_cov = st.selectbox("Coverage", ["Not Covered", "Covered"], 
-                                     index=["Not Covered", "Covered"].index(q.get('coverage_status', 'Not Covered')))
 
-            st.divider()
-            
             # Log Mini-Section inside Sidebar
             st.markdown("### 🚀 Log Session")
-            log_time = st.number_input("Mins", 1, 120, 20)
-            log_diff = st.slider("Diff (1-5)", 1, 5, 3)
-            log_correct = st.checkbox("Solved correctly?", value=True)
+            # log_time = st.number_input("Mins", 1, 120, 20)
+            # log_diff = st.slider("Diff (1-5)", 1, 5, 3)
+            # log_correct = st.checkbox("Solved correctly?", value=True)
 
             col_save, col_close = st.columns(2)
-            
+
             if col_save.button("💾 Save Everything", type="primary", use_container_width=True):
-                # Only log logic, code, and time
                 log_entry = {
                     "date": datetime.now().strftime("%Y-%m-%d"),
                     "logic": new_logic,
@@ -152,7 +186,7 @@ if st.session_state.active_qid:
                 requests.post(f"{API_URL}/questions/{q['id']}/log", json=log_entry)
                 st.success("Progress Saved!")
                 st.rerun()
-                
+
             if col_close.button("✖ Close", use_container_width=True):
                 st.session_state.active_qid = None
                 if 'start_timestamp' in st.session_state:
@@ -160,35 +194,37 @@ if st.session_state.active_qid:
                 st.rerun()
 
             # --- AI Validation Button (only if last log within 2 minutes) ---
-            show_ai_btn = False
-            if q.get('logs') and len(q['logs']) > 0:
-                last_log = q['logs'][-1]
-                # Try to get the log's timestamp, fallback to session start if not present
-                log_time_taken = last_log.get('time_taken')
-                # Use session timer as fallback if log_time_taken is not available
-                now_ts = int(time.time())
-                # If log_time_taken is available, check if it's within 2 minutes (120 seconds)
-                if log_time_taken is not None and log_time_taken <= 120:
-                    show_ai_btn = True
-            if show_ai_btn:
-                if st.button("🤖 Validate with AI", key="ai_validate_btn"):
-                    try:
-                        resp = requests.post(f"{API_URL}/questions/{q['id']}/validate")
-                        if resp.status_code == 200:
-                            result = resp.json()
-                            # Update the latest log with AI result
-                            if q['logs']:
-                                q['logs'][-1]['correct'] = result.get('correct', False)
-                                q['logs'][-1]['gap_analysis'] = result.get('gap_analysis', '')
-                            st.success("AI validation complete!")
-    
-                            st.markdown(result.get('gap_analysis', ''), unsafe_allow_html=True)
-                        else:
-                            st.error("AI validation failed.")
-                    except Exception as e:
-                        st.error(f"AI validation error: {e}")
+            # show_ai_btn = False
+            # if q.get('logs') and len(q['logs']) > 0:
+            #     last_log = q['logs'][-1]
+            #     log_time_taken = last_log.get('time_taken')
+            #     now_ts = int(time.time())
+            #     if log_time_taken is not None and log_time_taken <= 120:
+            #         show_ai_btn = True
+            # if show_ai_btn:
+            if st.button("🤖 Validate with AI", key="ai_validate_btn"):
+                try:
+                    resp = requests.post(f"{API_URL}/questions/{q['id']}/validate")
+                    if resp.status_code == 200:
+                        result = resp.json()
+                        st.success("AI validation complete!")
 
-# --- TAB: LOG PRACTICE ---
-with tabs[1]:
-    st.subheader("Global Progress Log")
-    st.write("Select a question from the 'View Questions' tab to open the edit sidebar and log a specific session.")
+                        # --- Show all AI feedback fields in a clear, styled way ---
+                        st.markdown("### Gap Analysis")
+                        st.markdown(result.get("gap_analysis", ""), unsafe_allow_html=True)
+
+                        st.markdown("### Correction Suggestion")
+                        st.info(result.get("correction_suggestion", ""))
+
+                        uf = result.get("updated_fields", {})
+                        st.markdown("### Updated Fields")
+                        st.write(f"**Accuracy:** {uf.get('accuracy', '')}%")
+                        st.write(f"**Revision Status:** {uf.get('revision_status', '')}")
+                        st.write(f"**Next Revision:** {uf.get('next_revision', '')}")
+                        st.write(f"**Ease Factor:** {uf.get('ease_factor', '')}")
+                        st.write(f"**Interval Days:** {uf.get('interval_days', '')}")
+                        st.write(f"**Suggestions:** {uf.get('suggestions', '')}")
+                    else:
+                        st.error("AI validation failed.")
+                except Exception as e:
+                    st.error(f"AI validation error: {e}")
