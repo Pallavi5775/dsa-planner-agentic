@@ -48,3 +48,10 @@ uvicorn main:app --host 0.0.0.0 --port 8000 &
 
 cd /path/to/DSA_PROGRAM_REVISION/frontend
 streamlit run app.py --server.port 8501 --server.address 0.0.0.0 &
+
+
+sudo tail -n 50 /var/log/nginx/error.log
+
+sudo nano /etc/nginx/sites-available/dsa
+sudo nginx -t
+sudo systemctl reload nginx

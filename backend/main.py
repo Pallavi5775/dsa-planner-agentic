@@ -11,7 +11,8 @@ import requests
 import openai
 
 DSA_FILE = "../DSA_Must_Solve_Problems.md"
-DATA_FILE = "data.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_FILE = os.path.join(BASE_DIR, "data.json")
 
 # --- Updated Data Models ---
 class PracticeLog(BaseModel):
