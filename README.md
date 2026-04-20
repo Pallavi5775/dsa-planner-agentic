@@ -21,10 +21,14 @@ streamlit run app.py
 
 You can now add questions, log practice, and view revision suggestions in your browser.
 
-cd backend
+sudo fuser -k 8501/tcp
+sudo fuser -k 8000/tcp
+
+cd ~/DSA_TRACKER/backend
 uvicorn main:app --host 0.0.0.0 --port 8000 &
+
 cd ../frontend
-streamlit run app.py --server.port 8501 --server.address 0.0.0.0 &
+streamlit run app.py --server.port 8501 --server.address 0.0.0.0
 
 redeploy
 ps aux | grep uvicorn
@@ -55,3 +59,8 @@ sudo tail -n 50 /var/log/nginx/error.log
 sudo nano /etc/nginx/sites-available/dsa
 sudo nginx -t
 sudo systemctl reload nginx
+
+
+nohup uvicorn main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
+
+nohup streamlit run app.py --server.port 8501 --server.address 0.0.0.0 > frontend.log 2>&1 &
