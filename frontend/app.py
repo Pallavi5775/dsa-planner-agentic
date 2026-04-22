@@ -475,7 +475,7 @@ questions = fetch_questions()
 df = pd.DataFrame(questions) if questions else pd.DataFrame()
 
 is_admin = st.session_state.get('role', 'user') == 'admin'
-tab_labels = ["📋 Questions", "📅 Calendar", "⚡ Activity"] + (["➕ Add Questions"] if is_admin else [])
+tab_labels = ["📋 Questions", "📅 Calendar", "⚡ Activity", "⚙ Settings"] + (["➕ Add Questions"] if is_admin else [])
 tabs = st.tabs(tab_labels)
 
 # Persist active tab across reloads via ?tab=N in the URL
@@ -812,10 +812,83 @@ with tabs[2]:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  TAB 3 — ADD QUESTIONS  (admin only)
+#  TAB 3 — SETTINGS
+# ══════════════════════════════════════════════════════════════════════════════
+with tabs[3]:
+    st.markdown(
+        '<p style="font-size:.7em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
+        'color:#7c3aed;margin-bottom:16px;">Practice Schedule</p>',
+        unsafe_allow_html=True
+    )
+
+    # Load current practice_days from API
+    if 'practice_days_loaded' not in st.session_state:
+        try:
+            r = requests.get(f"{API_URL}/me/practice-days", headers=auth_headers(), timeout=5)
+            if r.status_code == 200:
+                st.session_state.practice_days_str = r.json().get("practice_days", "")
+            else:
+                st.session_state.practice_days_str = ""
+        except:
+            st.session_state.practice_days_str = ""
+        st.session_state.practice_days_loaded = True
+
+    current_days = set(
+        int(d) for d in st.session_state.get("practice_days_str", "").split(",")
+        if d.strip().isdigit()
+    )
+
+    DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+    st.markdown(
+        '<div style="background:#fff;border:1.5px solid #ede9fe;border-radius:16px;'
+        'padding:24px 28px;max-width:460px;box-shadow:0 2px 8px rgba(124,58,237,.07);">',
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        '<p style="font-size:.85em;color:#6b7280;margin-bottom:16px;">'
+        'Choose the days you practice each week. Leave all unchecked for daily mode.</p>',
+        unsafe_allow_html=True
+    )
+
+    selected = []
+    cols = st.columns(2)
+    for i, name in enumerate(DAY_NAMES):
+        with cols[i % 2]:
+            if st.checkbox(name, value=(i in current_days), key=f"day_{i}"):
+                selected.append(i)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+
+    if st.button("💾 Save Schedule", type="primary", key="save_schedule_btn"):
+        new_val = ",".join(str(d) for d in sorted(selected))
+        try:
+            r = requests.patch(
+                f"{API_URL}/me/practice-days",
+                json={"practice_days": new_val},
+                headers=auth_headers(),
+                timeout=5,
+            )
+            if r.status_code == 200:
+                st.session_state.practice_days_str = new_val
+                st.session_state.practice_days_loaded = True
+                if new_val:
+                    day_labels = [DAY_NAMES[int(d)] for d in new_val.split(",")]
+                    st.success(f"Schedule saved: {', '.join(day_labels)}")
+                else:
+                    st.success("Schedule set to daily (every day).")
+            else:
+                st.error("Failed to save schedule.")
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  TAB 4 — ADD QUESTIONS  (admin only)
 # ══════════════════════════════════════════════════════════════════════════════
 if is_admin:
-    with tabs[3]:
+    with tabs[4]:
         st.markdown(
             '<div style="background:#fff;border:2px dashed #c4b5fd;border-radius:16px;'
             'padding:28px 28px 12px;text-align:center;margin-bottom:16px;">'

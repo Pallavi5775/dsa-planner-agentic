@@ -1,14 +1,57 @@
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
-def get_spaced_repetition_values(logs, current_ease, current_interval):
+def first_revision_date(base_date: str, practice_days: str) -> str:
+    """First review: 7 calendar days after practice, snapped to next valid practice day."""
+    dt = datetime.strptime(base_date, "%Y-%m-%d") + timedelta(days=7)
+    return snap_to_practice_day(dt.strftime("%Y-%m-%d"), practice_days)
+
+
+def snap_to_practice_day(ai_date: str, practice_days: str) -> str:
+    """
+    If ai_date falls on a practice day, return it unchanged.
+    Otherwise advance forward until the next valid practice day.
+    If practice_days is empty (daily), return ai_date as-is.
+    """
+    if not practice_days:
+        return ai_date
+    days = set(int(d) for d in practice_days.split(",") if d.strip())
+    dt = datetime.strptime(ai_date, "%Y-%m-%d")
+    while dt.weekday() not in days:
+        dt += timedelta(days=1)
+    return dt.strftime("%Y-%m-%d")
+
+
+def compute_next_revision(base_date: str, interval: int, practice_days: str) -> str:
+    """
+    Return the date of the interval-th next practice day after base_date.
+    practice_days: comma-separated weekday numbers (0=Mon … 6=Sun), empty = daily.
+    """
+    base = datetime.strptime(base_date, "%Y-%m-%d")
+    if not practice_days:
+        return (base + timedelta(days=interval)).strftime("%Y-%m-%d")
+
+    days = set(int(d) for d in practice_days.split(",") if d.strip())
+    count = 0
+    current = base + timedelta(days=1)
+    while True:
+        if current.weekday() in days:
+            count += 1
+            if count == interval:
+                break
+        current += timedelta(days=1)
+    return current.strftime("%Y-%m-%d")
+
+
+def get_spaced_repetition_values(logs, current_ease, current_interval, correct=None):
     if not logs:
         return 1, 2.5
 
     last = logs[-1]
     time_taken = last.time_taken if hasattr(last, "time_taken") else last.get("time_taken", 0)
-    correct = last.correct if hasattr(last, "correct") else last.get("correct", True)
+    if correct is None:
+        correct = last.correct if hasattr(last, "correct") else last.get("correct", True)
 
     if time_taken <= 7:
         difficulty_score = 1

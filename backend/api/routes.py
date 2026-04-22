@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 from backend.db.session import get_db
+from backend.db.models import User
 from backend.crud import question as crud
 from backend.schemas.question import QuestionCreate
 from backend.core.security import get_current_user_id, require_admin
@@ -97,6 +99,41 @@ async def upload_md(
     content = (await file.read()).decode("utf-8")
     added, total = await crud.add_questions_from_md(db, content)
     return {"added": added, "total": total}
+
+
+@router.patch("/me/practice-days")
+async def update_practice_days(
+    practice_days: str = Body(..., embed=True),
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """
+    practice_days: comma-separated weekday numbers (0=Mon … 6=Sun), e.g. "0,2,4".
+    Send empty string "" to switch back to daily.
+    """
+    if practice_days:
+        try:
+            parsed = [int(d) for d in practice_days.split(",") if d.strip()]
+            if not all(0 <= d <= 6 for d in parsed):
+                raise ValueError
+        except ValueError:
+            raise HTTPException(status_code=400, detail="practice_days must be comma-separated weekday numbers 0-6")
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.practice_days = practice_days
+    await db.commit()
+    updated = await crud.recalculate_next_revisions(db, user_id, practice_days)
+    return {"practice_days": practice_days, "revisions_updated": updated}
+
+
+@router.get("/me/practice-days")
+async def get_practice_days(
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    return {"practice_days": user.practice_days if user else ""}
 
 
 @router.post("/sync_questions")

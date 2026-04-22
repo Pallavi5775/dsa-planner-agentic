@@ -12,7 +12,8 @@ from backend.db import models  # MUST import
 config = context.config
 
 if not config.get_main_option("sqlalchemy.url", None):
-    config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
+    db_url = os.environ["DB_URL"].replace("postgresql+asyncpg://", "postgresql://")
+    config.set_main_option("sqlalchemy.url", db_url)
 
 fileConfig(config.config_file_name)
 

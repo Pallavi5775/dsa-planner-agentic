@@ -12,6 +12,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     role = Column(String, default="user", nullable=False)
+    practice_days = Column(String, default="", nullable=False)
 
     progress = relationship("UserQuestionProgress", back_populates="user", cascade="all, delete")
     logs = relationship("PracticeLog", back_populates="user", cascade="all, delete")

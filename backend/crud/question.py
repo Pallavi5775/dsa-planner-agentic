@@ -9,11 +9,14 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 
-from backend.db.models import Question, PracticeLog, UserQuestionProgress
+from backend.db.models import Question, PracticeLog, UserQuestionProgress, User
 from backend.core.utils import (
     get_spaced_repetition_values,
     calculate_accuracy,
     parse_questions_from_md,
+    compute_next_revision,
+    snap_to_practice_day,
+    first_revision_date,
 )
 
 
@@ -53,7 +56,7 @@ def _question_to_dict(q: Question, progress: UserQuestionProgress | None, user_l
         "category": q.category,
         "difficulty": q.difficulty,
         **d,
-        "total_time_spent": sum(log.time_taken for log in user_logs),
+        "total_time_spent": sum(log.time_taken for log in user_logs) // 60,
         "logs": [
             {
                 "id": log.id,
@@ -252,19 +255,30 @@ async def add_log(db: AsyncSession, qid: int, log_data: dict, user_id: int):
         date=datetime.now().strftime("%Y-%m-%d"),
         logic=log_data.get("logic", ""),
         code=log_data.get("code", ""),
-        time_taken=log_data.get("time_taken", 0),
+        time_taken=min(log_data.get("time_taken", 0), 3600),
         correct=log_data.get("correct", True),
     )
     db.add(log)
     await db.commit()
 
-    progress = (await db.execute(
-        select(UserQuestionProgress).where(
-            UserQuestionProgress.question_id == qid,
-            UserQuestionProgress.user_id == user_id,
-        )
-    )).scalar_one_or_none()
+    progress = await _get_or_create_progress(db, qid, user_id)
     user_logs = await _get_user_logs(db, qid, user_id)
+
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    practice_days = user.practice_days if user else ""
+
+    new_interval, new_ease = get_spaced_repetition_values(
+        user_logs, progress.ease_factor, progress.interval_days
+    )
+    progress.interval_days = new_interval
+    progress.ease_factor = new_ease
+
+    if len(user_logs) == 1:
+        progress.next_revision = first_revision_date(log.date, practice_days)
+    else:
+        progress.next_revision = compute_next_revision(log.date, new_interval, practice_days)
+    await db.commit()
+
     return _question_to_dict(q, progress, user_logs)
 
 
@@ -314,14 +328,13 @@ Your task is to analyze a student's session and update the question metadata.
       - If Incorrect: Explain the logical flaw (Greedy Trap).
 - Complexity Check: Verify if the time complexity matches optimal O(n log n) or O(n).
 
-### TASK 3: METADATA UPDATE (SRS Logic)
+### TASK 3: ASSESSMENT ONLY (backend handles all SRS scheduling)
 1. accuracy: 0-100. Base score from code/logic quality. Add bonuses. Cap at 100.
-2. coverage_status: "Covered" only if a valid attempt was made.
+2. correct: true if the approach and code are logically valid, false otherwise.
 3. revision_status: "Mastered" if accuracy > 90%, "Needs Work" if accuracy < 60%, "Pending" if gibberish.
-4. ease_factor: If accuracy < 60%, set EF = max(1.3, EF - 0.2).
-5. interval_days: 1 if wrong/gibberish, else round(interval * EF) if correct.
-6. next_revision: {today} + interval_days.
-7. suggestions: One-sentence summary referencing the student's notes/gap analysis if relevant.
+4. suggestions: One-sentence summary referencing the student's notes/gap analysis if relevant.
+
+DO NOT calculate ease_factor, interval_days, or next_revision. The backend computes these.
 
 ### JSON RESPONSE REQUIREMENTS:
 Return ONLY a valid JSON object. No markdown. No preamble.
@@ -333,9 +346,6 @@ Return ONLY a valid JSON object. No markdown. No preamble.
     "updated_fields": {{
         "accuracy": float,
         "revision_status": "string",
-        "next_revision": "YYYY-MM-DD",
-        "ease_factor": float,
-        "interval_days": int,
         "suggestions": "string"
     }}
 }}
@@ -361,19 +371,71 @@ Return ONLY a valid JSON object. No markdown. No preamble.
 
         if data and "updated_fields" in data:
             uf = data["updated_fields"]
+            correct = data.get("correct", False)
+
             p.accuracy = uf.get("accuracy", p.accuracy)
-            p.ease_factor = uf.get("ease_factor", p.ease_factor)
-            p.interval_days = uf.get("interval_days", p.interval_days)
-            p.next_revision = uf.get("next_revision", p.next_revision)
             p.suggestions = uf.get("suggestions", p.suggestions)
             p.coverage_status = "Covered"
-            p.revision_status = "Mastered" if data.get("correct") else "Needs Work"
+            p.revision_status = uf.get("revision_status", "Mastered" if correct else "Needs Work")
+
+            # SRS: backend owns interval and ease calculation
+            new_interval, new_ease = get_spaced_repetition_values(
+                user_logs, p.ease_factor, p.interval_days, correct=correct
+            )
+            p.interval_days = new_interval
+            p.ease_factor = new_ease
+
+            # Schedule-aware next revision date
+            user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+            practice_days = user.practice_days if user else ""
+            base = user_logs[-1].date if user_logs else today
+            if len(user_logs) <= 1:
+                p.next_revision = first_revision_date(base, practice_days)
+            else:
+                from datetime import timedelta
+                ai_date = (datetime.strptime(base, "%Y-%m-%d") + timedelta(days=new_interval)).strftime("%Y-%m-%d")
+                p.next_revision = snap_to_practice_day(ai_date, practice_days)
+
             await db.commit()
 
         return data
 
     except Exception as e:
         return {"correct": False, "gap_analysis": f"OpenAI validation failed: {e}"}
+
+
+async def recalculate_next_revisions(db: AsyncSession, user_id: int, practice_days: str) -> int:
+    progress_rows = (await db.execute(
+        select(UserQuestionProgress).where(UserQuestionProgress.user_id == user_id)
+    )).scalars().all()
+
+    all_logs = (await db.execute(
+        select(PracticeLog).where(PracticeLog.user_id == user_id)
+    )).scalars().all()
+
+    last_date_by_qid: dict[int, str] = {}
+    log_count_by_qid: dict[int, int] = {}
+    for log in all_logs:
+        log_count_by_qid[log.question_id] = log_count_by_qid.get(log.question_id, 0) + 1
+        existing = last_date_by_qid.get(log.question_id)
+        if existing is None or log.date > existing:
+            last_date_by_qid[log.question_id] = log.date
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    updated = 0
+    for p in progress_rows:
+        if not p.interval_days:
+            continue
+        base = last_date_by_qid.get(p.question_id, today)
+        count = log_count_by_qid.get(p.question_id, 0)
+        if count <= 1:
+            p.next_revision = first_revision_date(base, practice_days)
+        else:
+            p.next_revision = compute_next_revision(base, p.interval_days, practice_days)
+        updated += 1
+
+    await db.commit()
+    return updated
 
 
 async def sync_questions_from_file(db: AsyncSession) -> int:
