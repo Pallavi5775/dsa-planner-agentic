@@ -50,13 +50,16 @@ async def _push_to_github(user_id: int, session_data: dict) -> None:
         committed = await svc.commit_session(session_data)
         log.info("[github] session commit=%s", committed)
 
-        if committed and has_api_key():
-            log.info("[github] generating AI insight for %s", q)
-            insight_md = await generate_session_insight(session_data)
-            ok = await svc.commit_insight(insight_md, session_data["date"], q)
-            log.info("[github] insight commit=%s", ok)
-        elif not has_api_key():
+        if not has_api_key():
             log.info("[github] ANTHROPIC_API_KEY not set — skipping insight")
+        elif committed:
+            try:
+                log.info("[github] generating AI insight for %s", q)
+                insight_md = await generate_session_insight(session_data)
+                ok = await svc.commit_insight(insight_md, session_data["date"], q)
+                log.info("[github] insight commit=%s", ok)
+            except Exception as ie:
+                log.warning("[github] insight skipped for %s (session still saved): %s", q, ie)
 
     except Exception as e:
         log.error("[github] push failed for user=%s question=%s: %s", user_id, q, e, exc_info=True)
