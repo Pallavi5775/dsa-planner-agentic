@@ -22,8 +22,8 @@ async def _auto_validate(user_id: int, qid: int) -> None:
 
 
 async def _push_to_github(user_id: int, session_data: dict) -> None:
-    """Background task: commit session JSON + AI insight to the user's existing GitHub repo.
-    Does NOT create the repo — only commits if it already exists."""
+    """Background task: commit session JSON + AI insight to the user's private GitHub repo.
+    Creates the repo on first use if it doesn't exist yet."""
     try:
         from backend.db.session import AsyncSessionLocal
         from backend.db.models import User as UserModel
@@ -36,6 +36,7 @@ async def _push_to_github(user_id: int, session_data: dict) -> None:
                 return
 
         svc = GitHubStorageService(user.github_access_token, user.github_username)
+        await svc.ensure_repo()   # creates repo on first session, no-op afterwards
 
         committed = await svc.commit_session(session_data)
         if committed and has_api_key():

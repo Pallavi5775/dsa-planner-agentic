@@ -1122,7 +1122,7 @@ if st.session_state.active_qid:
                 requests.patch(f"{API_URL}/questions/{q['id']}/notes",
                                json={"notes": new_notes, "my_gap_analysis": new_gap},
                                headers=auth_headers())
-                st.success("Saved!")
+                st.success("Saved! AI analysis running in background...")
                 st.rerun()
 
             if col_close.button("✖ Close", use_container_width=True):
@@ -1130,40 +1130,3 @@ if st.session_state.active_qid:
                 st.session_state.pop('start_timestamp', None)
                 st.rerun()
 
-            st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
-
-            if st.button("🤖 Validate with AI", key="ai_btn", use_container_width=True):
-                with st.spinner("Analysing..."):
-                    try:
-                        resp = requests.post(f"{API_URL}/questions/{q['id']}/validate",
-                                            headers=auth_headers())
-                        if resp.status_code == 200:
-                            res = resp.json()
-                            uf  = res.get("updated_fields", {})
-                            ok  = res.get("correct", False)
-                            verdict_col = "#86efac" if ok else "#f9a8d4"
-                            verdict_txt = "✅ Correct" if ok else "❌ Needs Work"
-                            new_acc = uf.get('accuracy', '')
-                            ac = "#86efac" if (new_acc or 0) >= 80 else "#fcd34d" if (new_acc or 0) >= 60 else "#f9a8d4"
-
-                            st.markdown(
-                                f'<div style="background:#2a1050;border:1px solid #3d1a72;border-radius:14px;padding:14px;margin-top:8px;">'
-                                f'  <div style="font-weight:700;font-size:.95em;color:{verdict_col};margin-bottom:10px;">{verdict_txt}</div>'
-                                f'  <div style="font-size:.6em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#a855f7;margin-bottom:5px;">Gap Analysis</div>'
-                                f'  <div style="font-size:.83em;color:#d8b4fe;margin-bottom:10px;line-height:1.6;">{res.get("gap_analysis","")}</div>'
-                                f'  <div style="font-size:.6em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#a855f7;margin-bottom:5px;">Suggestion</div>'
-                                f'  <div style="border-left:3px solid #f472b6;padding:7px 10px;background:#3d1a72;border-radius:0 8px 8px 0;font-size:.83em;color:#fce7f3;margin-bottom:10px;">{res.get("correction_suggestion","")}</div>'
-                                f'  <div style="font-size:.6em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#a855f7;margin-bottom:6px;">Updated Metrics</div>'
-                                f'  <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #3d1a72;font-size:.8em;"><span style="color:#9ca3af;">Accuracy</span><span style="color:{ac};font-weight:600;">{new_acc}%</span></div>'
-                                f'  <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #3d1a72;font-size:.8em;"><span style="color:#9ca3af;">Status</span><span style="color:#e9d5ff;font-weight:600;">{uf.get("revision_status","")}</span></div>'
-                                f'  <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #3d1a72;font-size:.8em;"><span style="color:#9ca3af;">Next Revision</span><span style="color:#e9d5ff;font-weight:600;">{uf.get("next_revision","")}</span></div>'
-                                f'  <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #3d1a72;font-size:.8em;"><span style="color:#9ca3af;">Ease Factor</span><span style="color:#e9d5ff;font-weight:600;">{uf.get("ease_factor","")}</span></div>'
-                                f'  <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:.8em;"><span style="color:#9ca3af;">Interval</span><span style="color:#e9d5ff;font-weight:600;">{uf.get("interval_days","")}d</span></div>'
-                                f'  <div style="margin-top:8px;font-size:.8em;color:#c084fc;line-height:1.5;">{uf.get("suggestions","")}</div>'
-                                f'</div>',
-                                unsafe_allow_html=True
-                            )
-                        else:
-                            st.error("AI validation failed.")
-                    except Exception as e:
-                        st.error(f"Error: {e}")
