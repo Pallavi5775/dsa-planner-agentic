@@ -7,4 +7,5 @@ streamlit_autorefresh
 openai
 pandas
 httpx
+anthropic
 

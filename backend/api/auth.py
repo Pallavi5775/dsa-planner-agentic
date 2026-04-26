@@ -88,7 +88,7 @@ async def github_login():
         "https://github.com/login/oauth/authorize"
         f"?client_id={GITHUB_CLIENT_ID}"
         f"&redirect_uri={callback}"
-        "&scope=user:email"
+        "&scope=repo+user:email"   # repo scope for private repo access
     )
     return RedirectResponse(url)
 
@@ -116,7 +116,6 @@ async def github_callback(code: str, db: AsyncSession = Depends(get_db)):
         )
         gh_user = user_resp.json()
 
-        # Fetch primary email if the profile email is private
         email = gh_user.get("email")
         if not email:
             emails_resp = await client.get(
@@ -126,14 +125,27 @@ async def github_callback(code: str, db: AsyncSession = Depends(get_db)):
             primary = next((e for e in emails_resp.json() if e.get("primary")), None)
             email = primary["email"] if primary else f"gh_{gh_user['id']}@users.noreply.github.com"
 
+    gh_login = gh_user.get("login", "")
+
     user = await get_or_create_oauth_user(
         db,
         provider="github",
         oauth_id=str(gh_user["id"]),
         email=email,
-        username=gh_user.get("login") or email.split("@")[0],
+        username=gh_login or email.split("@")[0],
         avatar_url=gh_user.get("avatar_url"),
     )
+
+    # Persist GitHub login + token for API calls (repo commits, etc.)
+    user.github_username = gh_login
+    user.github_access_token = access_token
+    await db.commit()
+
+    # Bootstrap their private repo in the background (non-blocking)
+    import asyncio
+    from backend.services.github_storage import GitHubStorageService
+    asyncio.create_task(GitHubStorageService(access_token, gh_login).ensure_repo())
+
     return _redirect_to_frontend(user)
 
 

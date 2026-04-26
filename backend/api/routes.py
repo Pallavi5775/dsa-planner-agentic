@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -9,6 +9,29 @@ from backend.schemas.question import QuestionCreate
 from backend.core.security import get_current_user_id, require_admin
 
 router = APIRouter()
+
+
+async def _push_to_github(user_id: int, session_data: dict) -> None:
+    """Background task: commit session JSON + AI insight to the user's private GitHub repo."""
+    try:
+        from backend.db.session import AsyncSessionLocal
+        from backend.db.models import User as UserModel
+        from backend.services.github_storage import GitHubStorageService
+        from backend.services.ai_insights import generate_session_insight, has_api_key
+
+        async with AsyncSessionLocal() as db:
+            user = await db.get(UserModel, user_id)
+            if not user or not user.github_access_token or not user.github_username:
+                return
+
+            svc = GitHubStorageService(user.github_access_token, user.github_username)
+            await svc.commit_session(session_data)
+
+            if has_api_key():
+                insight_md = await generate_session_insight(session_data)
+                await svc.commit_insight(insight_md, session_data["date"], session_data["question"])
+    except Exception:
+        pass  # never break the practice session save
 
 
 @router.get("/activity")
@@ -50,10 +73,28 @@ async def update(
 async def add_log(
     qid: int,
     log: dict,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    return await crud.add_log(db, qid, log, user_id)
+    result = await crud.add_log(db, qid, log, user_id)
+
+    # Build the session payload for GitHub
+    latest = result["logs"][-1] if result.get("logs") else {}
+    session_data = {
+        "date":               latest.get("date", ""),
+        "question":           result.get("title", ""),
+        "pattern":            result.get("pattern", ""),
+        "category":           result.get("category", ""),
+        "difficulty":         result.get("difficulty", ""),
+        "correct":            log.get("correct", True),
+        "time_taken_seconds": latest.get("time_taken", 0),
+        "logic":              latest.get("logic", ""),
+        "code":               latest.get("code", ""),
+    }
+    background_tasks.add_task(_push_to_github, user_id, session_data)
+
+    return result
 
 
 @router.put("/questions/{qid}/status")

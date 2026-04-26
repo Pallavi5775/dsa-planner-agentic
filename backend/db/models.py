@@ -11,9 +11,11 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=True)
-    oauth_provider = Column(String, nullable=True)   # "google" | "github" | None
-    oauth_id = Column(String, nullable=True)          # provider's user ID
+    oauth_provider = Column(String, nullable=True)
+    oauth_id = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
+    github_username = Column(String, nullable=True)       # original GitHub login (e.g. "john-doe")
+    github_access_token = Column(String, nullable=True)   # OAuth token for GitHub API
     role = Column(String, default="user", nullable=False)
     practice_days = Column(String, default="", nullable=False)
 
