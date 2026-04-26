@@ -11,8 +11,19 @@ from backend.core.security import get_current_user_id, require_admin
 router = APIRouter()
 
 
+async def _auto_validate(user_id: int, qid: int) -> None:
+    """Background task: run AI validation on a just-saved session."""
+    try:
+        from backend.db.session import AsyncSessionLocal
+        async with AsyncSessionLocal() as db:
+            await crud.validate_question(db, qid, user_id)
+    except Exception:
+        pass
+
+
 async def _push_to_github(user_id: int, session_data: dict) -> None:
-    """Background task: commit session JSON + AI insight to the user's private GitHub repo."""
+    """Background task: commit session JSON + AI insight to the user's existing GitHub repo.
+    Does NOT create the repo — only commits if it already exists."""
     try:
         from backend.db.session import AsyncSessionLocal
         from backend.db.models import User as UserModel
@@ -24,14 +35,14 @@ async def _push_to_github(user_id: int, session_data: dict) -> None:
             if not user or not user.github_access_token or not user.github_username:
                 return
 
-            svc = GitHubStorageService(user.github_access_token, user.github_username)
-            await svc.commit_session(session_data)
+        svc = GitHubStorageService(user.github_access_token, user.github_username)
 
-            if has_api_key():
-                insight_md = await generate_session_insight(session_data)
-                await svc.commit_insight(insight_md, session_data["date"], session_data["question"])
+        committed = await svc.commit_session(session_data)
+        if committed and has_api_key():
+            insight_md = await generate_session_insight(session_data)
+            await svc.commit_insight(insight_md, session_data["date"], session_data["question"])
     except Exception:
-        pass  # never break the practice session save
+        pass
 
 
 @router.get("/activity")
@@ -92,6 +103,7 @@ async def add_log(
         "logic":              latest.get("logic", ""),
         "code":               latest.get("code", ""),
     }
+    background_tasks.add_task(_auto_validate, user_id, qid)
     background_tasks.add_task(_push_to_github, user_id, session_data)
 
     return result

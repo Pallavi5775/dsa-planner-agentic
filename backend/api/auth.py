@@ -141,11 +141,6 @@ async def github_callback(code: str, db: AsyncSession = Depends(get_db)):
     user.github_access_token = access_token
     await db.commit()
 
-    # Bootstrap their private repo in the background (non-blocking)
-    import asyncio
-    from backend.services.github_storage import GitHubStorageService
-    asyncio.create_task(GitHubStorageService(access_token, gh_login).ensure_repo())
-
     return _redirect_to_frontend(user)
 
 
