@@ -1,6 +1,9 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+
+log = logging.getLogger(__name__)
 
 from backend.db.session import get_db
 from backend.db.models import User
@@ -13,17 +16,20 @@ router = APIRouter()
 
 async def _auto_validate(user_id: int, qid: int) -> None:
     """Background task: run AI validation on a just-saved session."""
+    log.info("[validate] starting for user=%s qid=%s", user_id, qid)
     try:
         from backend.db.session import AsyncSessionLocal
         async with AsyncSessionLocal() as db:
-            await crud.validate_question(db, qid, user_id)
-    except Exception:
-        pass
+            result = await crud.validate_question(db, qid, user_id)
+        log.info("[validate] done for qid=%s correct=%s", qid, result.get("correct") if result else "no-result")
+    except Exception as e:
+        log.error("[validate] failed for user=%s qid=%s: %s", user_id, qid, e, exc_info=True)
 
 
 async def _push_to_github(user_id: int, session_data: dict) -> None:
-    """Background task: commit session JSON + AI insight to the user's private GitHub repo.
-    Creates the repo on first use if it doesn't exist yet."""
+    """Background task: commit session JSON + AI insight to the user's private GitHub repo."""
+    q = session_data.get("question", "?")
+    log.info("[github] starting push for user=%s question=%s", user_id, q)
     try:
         from backend.db.session import AsyncSessionLocal
         from backend.db.models import User as UserModel
@@ -33,17 +39,27 @@ async def _push_to_github(user_id: int, session_data: dict) -> None:
         async with AsyncSessionLocal() as db:
             user = await db.get(UserModel, user_id)
             if not user or not user.github_access_token or not user.github_username:
+                log.info("[github] user=%s has no github token — skipping", user_id)
                 return
 
+        log.info("[github] ensuring repo for %s", user.github_username)
         svc = GitHubStorageService(user.github_access_token, user.github_username)
-        await svc.ensure_repo()   # creates repo on first session, no-op afterwards
+        await svc.ensure_repo()
 
+        log.info("[github] committing session JSON for %s", q)
         committed = await svc.commit_session(session_data)
+        log.info("[github] session commit=%s", committed)
+
         if committed and has_api_key():
+            log.info("[github] generating AI insight for %s", q)
             insight_md = await generate_session_insight(session_data)
-            await svc.commit_insight(insight_md, session_data["date"], session_data["question"])
-    except Exception:
-        pass
+            ok = await svc.commit_insight(insight_md, session_data["date"], q)
+            log.info("[github] insight commit=%s", ok)
+        elif not has_api_key():
+            log.info("[github] ANTHROPIC_API_KEY not set — skipping insight")
+
+    except Exception as e:
+        log.error("[github] push failed for user=%s question=%s: %s", user_id, q, e, exc_info=True)
 
 
 @router.get("/activity")
