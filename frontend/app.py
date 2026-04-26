@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import calendar as cal_lib
 import streamlit as st
 import requests
@@ -6,7 +7,9 @@ from datetime import datetime, timedelta, date
 import pandas as pd
 import time
 
-API_URL = 'http://localhost:8000/api'
+# Set BACKEND_URL env var to override (e.g. for local dev: http://localhost:8000)
+_BACKEND = os.getenv("BACKEND_URL", "https://dsa-planner.co.in")
+API_URL = f"{_BACKEND}/api"
 
 st.set_page_config(layout="wide", page_title="DSA Revision Planner", page_icon="🎯")
 
@@ -53,88 +56,66 @@ def auth_headers():
     return {"Authorization": f"Bearer {st.session_state.get('token', '')}"}
 
 
-def api_post_auth(path, payload):
-    return requests.post(f"{API_URL}{path}", json=payload, timeout=8)
+BACKEND_URL = "http://localhost:8000"
 
 
 def show_auth_page():
-    """Full-screen login / register page."""
+    """Full-screen OAuth login page."""
     st.markdown("""
     <style>
     html, body, [data-testid="stAppViewContainer"] { background: #faf5ff !important; }
-    .auth-wrap {
-        max-width: 420px; margin: 60px auto 0; padding: 36px 40px;
-        background: #fff; border: 1.5px solid #ede9fe; border-radius: 24px;
-        box-shadow: 0 8px 32px rgba(124,58,237,.12);
+    .auth-btn {
+        display: flex; align-items: center; justify-content: center; gap: 10px;
+        width: 100%; padding: 13px 20px; border-radius: 12px; font-size: 1em;
+        font-weight: 600; text-decoration: none; margin-bottom: 12px;
+        border: 1.5px solid; cursor: pointer; transition: opacity .15s;
     }
-    .auth-logo { font-size: 2.2em; text-align: center; margin-bottom: 4px; }
-    .auth-title {
-        text-align: center; font-size: 1.5em; font-weight: 800;
-        background: linear-gradient(135deg,#7c3aed,#db2777);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        margin-bottom: 2px;
-    }
-    .auth-sub { text-align:center; color:#a78bfa; font-size:.85em; margin-bottom:24px; }
+    .auth-btn:hover { opacity: .85; }
+    .btn-google { background:#fff; color:#3c4043; border-color:#dadce0; }
+    .btn-github { background:#24292e; color:#fff; border-color:#24292e; }
     </style>
     """, unsafe_allow_html=True)
 
     _, col, _ = st.columns([1, 1.8, 1])
     with col:
         st.markdown(
-            '<div class="auth-logo">🎯</div>'
-            '<div class="auth-title">DSA Revision Planner</div>'
-            '<div class="auth-sub">Track · Practice · Master</div>',
+            '<div style="font-size:2.2em;text-align:center;margin-bottom:4px">🎯</div>'
+            '<div style="text-align:center;font-size:1.5em;font-weight:800;'
+            'background:linear-gradient(135deg,#7c3aed,#db2777);'
+            '-webkit-background-clip:text;-webkit-text-fill-color:transparent;'
+            'margin-bottom:2px">DSA Revision Planner</div>'
+            '<div style="text-align:center;color:#a78bfa;font-size:.85em;margin-bottom:28px">'
+            'Track · Practice · Master</div>',
             unsafe_allow_html=True,
         )
 
-        tab_login, tab_reg = st.tabs(["🔐 Login", "✨ Register"])
+        google_url = f"{_BACKEND}/api/auth/google"
+        github_url = f"{_BACKEND}/api/auth/github"
 
-        with tab_login:
-            username = st.text_input("Username", key="li_user", placeholder="your username")
-            password = st.text_input("Password", key="li_pass", placeholder="••••••••", type="password")
-            if st.button("Login", type="primary", use_container_width=True, key="li_btn"):
-                if not username or not password:
-                    st.warning("Please fill in all fields.")
-                else:
-                    try:
-                        r = api_post_auth("/auth/login", {"username": username, "password": password})
-                        if r.status_code == 200:
-                            d = r.json()
-                            st.session_state.token    = d["access_token"]
-                            st.session_state.username = d["username"]
-                            st.session_state.user_id  = d["user_id"]
-                            st.session_state.role     = d["role"]
-                            _save_auth_qparams(d["access_token"], d["username"], d["user_id"], d["role"])
-                            st.rerun()
-                        else:
-                            st.error(r.json().get("detail", "Login failed."))
-                    except Exception as e:
-                        st.error(f"Cannot reach server: {e}")
+        st.markdown(
+            f'<a class="auth-btn btn-google" href="{google_url}" target="_self">'
+            '<svg width="20" height="20" viewBox="0 0 48 48">'
+            '<path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.8 2.5 30.2 0 24 0 14.8 0 6.9 5.4 3 13.3l7.8 6C12.7 13 17.9 9.5 24 9.5z"/>'
+            '<path fill="#4285F4" d="M46.6 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 6.9-10 6.9-17z"/>'
+            '<path fill="#FBBC05" d="M10.8 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7L2.5 13.3A24 24 0 0 0 0 24c0 3.8.9 7.4 2.5 10.6l8.3-5.9z"/>'
+            '<path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.2-8.4 2.2-6.1 0-11.3-3.6-13.2-8.8l-8.3 5.9C6.9 42.6 14.8 48 24 48z"/>'
+            '</svg>Continue with Google</a>',
+            unsafe_allow_html=True,
+        )
 
-        with tab_reg:
-            ru = st.text_input("Username", key="re_user", placeholder="choose a username")
-            re = st.text_input("Email",    key="re_email", placeholder="you@example.com")
-            rp = st.text_input("Password", key="re_pass", placeholder="••••••••", type="password")
-            if st.button("Create Account", type="primary", use_container_width=True, key="re_btn"):
-                if not ru or not re or not rp:
-                    st.warning("Please fill in all fields.")
-                elif len(rp) < 6:
-                    st.warning("Password must be at least 6 characters.")
-                else:
-                    try:
-                        r = api_post_auth("/auth/register", {"username": ru, "email": re, "password": rp})
-                        if r.status_code == 200:
-                            d = r.json()
-                            st.session_state.token    = d["access_token"]
-                            st.session_state.username = d["username"]
-                            st.session_state.user_id  = d["user_id"]
-                            st.session_state.role     = d["role"]
-                            _save_auth_qparams(d["access_token"], d["username"], d["user_id"], d["role"])
-                            st.rerun()
-                        else:
-                            st.error(r.json().get("detail", "Registration failed."))
-                    except Exception as e:
-                        st.error(f"Cannot reach server: {e}")
+        st.markdown(
+            f'<a class="auth-btn btn-github" href="{github_url}" target="_self">'
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="white">'
+            '<path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.38.6.1.82-.26.82-.58v-2.17c-3.34.72-4.04-1.6-4.04-1.6-.54-1.38-1.33-1.75-1.33-1.75-1.09-.74.08-.73.08-.73 1.2.09 1.83 1.24 1.83 1.24 1.07 1.83 2.8 1.3 3.48.99.1-.78.42-1.3.76-1.6-2.66-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.12-3.17 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.66 1.65.24 2.87.12 3.17.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58C20.56 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/>'
+            '</svg>Continue with GitHub</a>',
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(
+            '<p style="text-align:center;color:#a78bfa;font-size:.78em;margin-top:16px">'
+            'We only read your public profile and email address.</p>',
+            unsafe_allow_html=True,
+        )
 
     st.stop()  # don't render the main app
 
