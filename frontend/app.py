@@ -6,6 +6,7 @@ import requests
 from datetime import datetime, timedelta, date
 import pandas as pd
 import time
+from streamlit_autorefresh import st_autorefresh
 
 # Set BACKEND_URL env var to override (e.g. for local dev: http://localhost:8000)
 _BACKEND = os.getenv("BACKEND_URL", "https://dsa-planner.co.in")
@@ -1122,11 +1123,84 @@ if st.session_state.active_qid:
                 requests.patch(f"{API_URL}/questions/{q['id']}/notes",
                                json={"notes": new_notes, "my_gap_analysis": new_gap},
                                headers=auth_headers())
-                st.success("Saved! AI analysis running in background...")
+                st.session_state.ai_pending_qid   = q['id']
+                st.session_state.ai_pending_since = time.time()
                 st.rerun()
 
             if col_close.button("✖ Close", use_container_width=True):
                 st.session_state.active_qid = None
                 st.session_state.pop('start_timestamp', None)
+                st.session_state.pop('ai_pending_qid', None)
+                st.session_state.pop('ai_pending_since', None)
                 st.rerun()
+
+            # ── AI Analysis Results ───────────────────────────────────────────
+            pending_qid = st.session_state.get("ai_pending_qid")
+            if pending_qid == q['id']:
+                has_results = bool(q.get('suggestions') or q.get('accuracy') is not None)
+                elapsed_wait = time.time() - st.session_state.get("ai_pending_since", time.time())
+
+                if has_results:
+                    # Results are in DB — show the card
+                    st.session_state.pop("ai_pending_qid",   None)
+                    st.session_state.pop("ai_pending_since", None)
+
+                    status   = q.get("revision_status", "")
+                    accuracy = q.get("accuracy")
+                    correct  = status == "Mastered" or (accuracy or 0) >= 80
+                    verdict_color = "#86efac" if correct else "#f9a8d4"
+                    verdict_text  = "✅ Correct" if correct else "❌ Needs Work"
+                    acc_color = (
+                        "#86efac" if (accuracy or 0) >= 80
+                        else "#fcd34d" if (accuracy or 0) >= 60
+                        else "#f9a8d4"
+                    )
+
+                    st.markdown(
+                        f'<div style="background:#2a1050;border:1px solid #3d1a72;'
+                        f'border-radius:14px;padding:14px;margin-top:10px;">'
+                        f'<div style="font-size:.6em;font-weight:700;letter-spacing:1px;'
+                        f'text-transform:uppercase;color:#a855f7;margin-bottom:6px;">🤖 AI Analysis</div>'
+                        f'<div style="font-weight:700;font-size:.95em;color:{verdict_color};'
+                        f'margin-bottom:10px;">{verdict_text}</div>'
+                        + (
+                            f'<div style="display:flex;justify-content:space-between;'
+                            f'padding:5px 0;border-bottom:1px solid #3d1a72;font-size:.8em;">'
+                            f'<span style="color:#9ca3af;">Accuracy</span>'
+                            f'<span style="color:{acc_color};font-weight:600;">{accuracy}%</span></div>'
+                            if accuracy is not None else ""
+                        )
+                        + (
+                            f'<div style="display:flex;justify-content:space-between;'
+                            f'padding:5px 0;border-bottom:1px solid #3d1a72;font-size:.8em;">'
+                            f'<span style="color:#9ca3af;">Status</span>'
+                            f'<span style="color:#e9d5ff;font-weight:600;">{status}</span></div>'
+                            if status else ""
+                        )
+                        + (
+                            f'<div style="margin-top:8px;border-left:3px solid #f472b6;'
+                            f'padding:7px 10px;background:#3d1a72;border-radius:0 8px 8px 0;'
+                            f'font-size:.82em;color:#fce7f3;line-height:1.5;">'
+                            f'{q["suggestions"]}</div>'
+                            if q.get("suggestions") else ""
+                        )
+                        + '</div>',
+                        unsafe_allow_html=True,
+                    )
+
+                elif elapsed_wait < 20:
+                    # Still waiting — auto-refresh every 2.5 s (up to 8 times = 20 s)
+                    st.markdown(
+                        '<div style="background:#2a1050;border:1px solid #3d1a72;'
+                        'border-radius:14px;padding:12px 14px;margin-top:10px;'
+                        'font-size:.85em;color:#a78bfa;">⏳ AI analysis running…</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st_autorefresh(interval=2500, limit=8, key="ai_refresh")
+
+                else:
+                    # Timed out
+                    st.session_state.pop("ai_pending_qid",   None)
+                    st.session_state.pop("ai_pending_since", None)
+                    st.caption("AI analysis will show on next open.")
 
