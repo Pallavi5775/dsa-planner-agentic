@@ -1,3 +1,4 @@
+import os
 import re
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -5,9 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.db.models import User
 
 
-async def _first_user_gets_admin(db: AsyncSession) -> str:
-    result = await db.execute(select(User).limit(1))
-    return "admin" if result.first() is None else "user"
+def _is_admin_email(email: str) -> bool:
+    """Return True if email is in the ADMIN_EMAILS env var (comma-separated)."""
+    raw = os.getenv("ADMIN_EMAILS", "")
+    allowed = {e.strip().lower() for e in raw.split(",") if e.strip()}
+    return email.lower() in allowed
 
 
 def _sanitize_username(raw: str) -> str:
@@ -37,40 +40,45 @@ async def get_or_create_oauth_user(
     username: str,
     avatar_url: str | None = None,
 ) -> User:
+    correct_role = "admin" if _is_admin_email(email) else "user"
+
     # 1. Exact match by provider + provider user-id (returning user)
     result = await db.execute(
         select(User).where(User.oauth_provider == provider, User.oauth_id == oauth_id)
     )
     user = result.scalar_one_or_none()
     if user:
+        changed = False
         if avatar_url and user.avatar_url != avatar_url:
             user.avatar_url = avatar_url
+            changed = True
+        if user.role != correct_role:      # sync role if ADMIN_EMAILS list changed
+            user.role = correct_role
+            changed = True
+        if changed:
             await db.commit()
             await db.refresh(user)
         return user
 
     # 2. Same email already in DB — only link if it's already a passwordless OAuth account.
     #    Legacy password-auth users (hashed_password set) are NOT auto-merged; the email
-    #    gets a numeric suffix so both accounts coexist independently.
+    #    gets a provider-scoped placeholder so both accounts coexist independently.
     result = await db.execute(select(User).where(User.email == email))
     existing = result.scalar_one_or_none()
     if existing:
         if existing.hashed_password is None:
-            # Pure OAuth account — safe to link the new provider to it
             existing.oauth_provider = provider
             existing.oauth_id = oauth_id
+            existing.role = correct_role
             if avatar_url:
                 existing.avatar_url = avatar_url
             await db.commit()
             await db.refresh(existing)
             return existing
         else:
-            # Legacy password user shares this email — use a provider-scoped email
-            # so we can create a new independent account without a unique-key clash
             email = f"{provider}_{oauth_id}@oauth.local"
 
     # 3. Brand-new user
-    role = await _first_user_gets_admin(db)
     safe_username = await _unique_username(db, _sanitize_username(username))
     user = User(
         username=safe_username,
@@ -79,7 +87,7 @@ async def get_or_create_oauth_user(
         oauth_provider=provider,
         oauth_id=oauth_id,
         avatar_url=avatar_url,
-        role=role,
+        role=correct_role,
     )
     db.add(user)
     await db.commit()

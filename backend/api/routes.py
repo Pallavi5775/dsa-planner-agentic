@@ -177,6 +177,24 @@ async def get_practice_days(
     return {"practice_days": user.practice_days if user else ""}
 
 
+@router.post("/github/setup")
+async def github_setup(
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """Ensure the user's private dsa-planner-data repo exists (idempotent)."""
+    from backend.db.models import User as UserModel
+    from backend.services.github_storage import GitHubStorageService
+
+    user = await db.get(UserModel, user_id)
+    if not user or not user.github_access_token or not user.github_username:
+        return {"ok": False, "reason": "no_github_token"}
+
+    svc = GitHubStorageService(user.github_access_token, user.github_username)
+    created = await svc.ensure_repo()
+    return {"ok": created}
+
+
 @router.get("/github/history")
 async def github_history(
     db: AsyncSession = Depends(get_db),

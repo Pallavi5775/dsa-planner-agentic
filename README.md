@@ -21,8 +21,7 @@ streamlit run app.py
 
 You can now add questions, log practice, and view revision suggestions in your browser.
 
-sudo fuser -k 8501/tcp
-sudo fuser -k 8000/tcp
+
 
 cd ~/DSA_TRACKER/backend
 uvicorn main:app --host 0.0.0.0 --port 8000 &
@@ -60,6 +59,10 @@ sudo nano /etc/nginx/sites-available/dsa
 sudo nginx -t
 sudo systemctl reload nginx
 export OPENAI_API_KEY="your-openai-api-key"
+
+
+sudo fuser -k 8501/tcp
+sudo fuser -k 8000/tcp
 
 nohup uvicorn backend.main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
 
