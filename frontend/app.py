@@ -721,21 +721,148 @@ with tabs[2]:
     st.markdown(build_heatmap_html(sbd), unsafe_allow_html=True)
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
-    # ── Feed + Pattern chart ──────────────────────────────────────────────────
-    feed_col, chart_col = st.columns([0.58, 0.42])
+    # ── Charts row 1: Sessions over time + Accuracy trend ────────────────────
+    import plotly.graph_objects as go
 
-    with feed_col:
-        st.markdown(
-            '<div style="font-size:.7em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
-            'color:#7c3aed;margin-bottom:10px;">📋 Recent Sessions</div>',
-            unsafe_allow_html=True
+    PURPLE_PALETTE = ["#7c3aed", "#a855f7", "#db2777", "#6366f1", "#ec4899",
+                      "#0ea5e9", "#f97316", "#10b981", "#f59e0b", "#14b8a6"]
+
+    def _chart_layout(fig, title):
+        fig.update_layout(
+            title=dict(text=title, font=dict(size=13, color="#4c1d95", family="Inter,sans-serif"), x=0),
+            paper_bgcolor="white",
+            plot_bgcolor="white",
+            margin=dict(l=8, r=8, t=36, b=8),
+            font=dict(family="Inter,sans-serif", size=11, color="#4c1d95"),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
+                        font=dict(size=10)),
+            xaxis=dict(showgrid=False, zeroline=False, tickfont=dict(size=10)),
+            yaxis=dict(showgrid=True, gridcolor="#f0ebff", zeroline=False, tickfont=dict(size=10)),
         )
-        recent = act.get("recent_sessions", [])
-        if not recent:
-            st.markdown('<p style="color:#c4b5fd;font-size:.88em;">No sessions yet — start practicing!</p>', unsafe_allow_html=True)
+        return fig
+
+    ch1, ch2 = st.columns(2)
+
+    # Chart 1 — Sessions over time (area chart, last 60 days)
+    with ch1:
+        if sbd:
+            from datetime import date as _date, timedelta as _td
+            day60 = (_date.today() - _td(days=59)).strftime("%Y-%m-%d")
+            dates_sorted = sorted(d for d in sbd if d >= day60)
+            # fill gaps with 0
+            if dates_sorted:
+                all_dates, all_counts = [], []
+                cur_d = _date.fromisoformat(dates_sorted[0])
+                end_d = _date.today()
+                while cur_d <= end_d:
+                    s = cur_d.strftime("%Y-%m-%d")
+                    all_dates.append(s)
+                    all_counts.append(sbd.get(s, 0))
+                    cur_d += _td(days=1)
+                fig1 = go.Figure()
+                fig1.add_trace(go.Scatter(
+                    x=all_dates, y=all_counts, mode="lines",
+                    fill="tozeroy",
+                    line=dict(color="#7c3aed", width=2),
+                    fillcolor="rgba(124,58,237,0.12)",
+                    name="Sessions",
+                ))
+                fig1 = _chart_layout(fig1, "Sessions over time (last 60 days)")
+                st.plotly_chart(fig1, use_container_width=True, config={"displayModeBar": False})
         else:
-            # Group by date
-            from itertools import groupby
+            st.markdown('<p style="color:#c4b5fd;font-size:.88em;">No session data yet.</p>', unsafe_allow_html=True)
+
+    # Chart 2 — Accuracy trend (correct vs wrong per day)
+    with ch2:
+        dc = act.get("daily_correct", {})
+        dw = act.get("daily_wrong", {})
+        all_ac_dates = sorted(set(dc) | set(dw))
+        if all_ac_dates:
+            correct_vals = [dc.get(d, 0) for d in all_ac_dates]
+            wrong_vals   = [dw.get(d, 0) for d in all_ac_dates]
+            fig2 = go.Figure()
+            fig2.add_trace(go.Scatter(
+                x=all_ac_dates, y=correct_vals, mode="lines+markers",
+                name="Correct", line=dict(color="#10b981", width=2),
+                marker=dict(size=5),
+            ))
+            fig2.add_trace(go.Scatter(
+                x=all_ac_dates, y=wrong_vals, mode="lines+markers",
+                name="Wrong", line=dict(color="#db2777", width=2),
+                marker=dict(size=5),
+            ))
+            fig2 = _chart_layout(fig2, "Accuracy trend — correct vs wrong per day")
+            st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
+        else:
+            st.markdown('<p style="color:#c4b5fd;font-size:.88em;">No accuracy data yet.</p>', unsafe_allow_html=True)
+
+    # ── Charts row 2: Pattern donut + Time per pattern ────────────────────────
+    ch3, ch4 = st.columns(2)
+
+    # Chart 3 — Pattern distribution donut
+    with ch3:
+        pc = act.get("pattern_counts", {})
+        if pc:
+            top_pc = dict(list(pc.items())[:10])
+            fig3 = go.Figure(go.Pie(
+                labels=list(top_pc.keys()),
+                values=list(top_pc.values()),
+                hole=0.5,
+                marker=dict(colors=PURPLE_PALETTE),
+                textfont=dict(size=10),
+                hovertemplate="%{label}: %{value} sessions<extra></extra>",
+            ))
+            fig3 = _chart_layout(fig3, "Practice by pattern (top 10)")
+            fig3.update_layout(
+                showlegend=True,
+                legend=dict(orientation="v", font=dict(size=9), x=1, y=0.5),
+            )
+            st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar": False})
+        else:
+            st.markdown('<p style="color:#c4b5fd;font-size:.88em;">No pattern data yet.</p>', unsafe_allow_html=True)
+
+    # Chart 4 — Time spent per pattern (horizontal bar, top 10)
+    with ch4:
+        tbp = act.get("time_by_pattern", {})
+        if tbp:
+            top_tbp = dict(list(tbp.items())[:10])
+            patterns = list(reversed(list(top_tbp.keys())))
+            minutes  = [round(top_tbp[p] / 60, 1) for p in patterns]
+            fig4 = go.Figure(go.Bar(
+                x=minutes, y=patterns, orientation="h",
+                marker=dict(
+                    color=minutes,
+                    colorscale=[[0, "#ddd6fe"], [0.5, "#a855f7"], [1, "#7c3aed"]],
+                    showscale=False,
+                ),
+                text=[f"{m}m" for m in minutes],
+                textposition="outside",
+                hovertemplate="%{y}: %{x}m<extra></extra>",
+            ))
+            fig4 = _chart_layout(fig4, "Time spent per pattern (minutes, top 10)")
+            fig4.update_layout(
+                yaxis=dict(showgrid=False, tickfont=dict(size=10)),
+                xaxis_title="minutes",
+                margin=dict(l=8, r=40, t=36, b=8),
+            )
+            st.plotly_chart(fig4, use_container_width=True, config={"displayModeBar": False})
+        else:
+            st.markdown('<p style="color:#c4b5fd;font-size:.88em;">No time data yet.</p>', unsafe_allow_html=True)
+
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+
+    # ── Recent sessions feed ──────────────────────────────────────────────────
+    st.markdown(
+        '<div style="font-size:.7em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
+        'color:#7c3aed;margin-bottom:10px;">📋 Recent Sessions</div>',
+        unsafe_allow_html=True
+    )
+    recent = act.get("recent_sessions", [])
+    if not recent:
+        st.markdown('<p style="color:#c4b5fd;font-size:.88em;">No sessions yet — start practicing!</p>', unsafe_allow_html=True)
+    else:
+        feed_col, _ = st.columns([0.6, 0.4])
+        with feed_col:
             grouped = {}
             for s in recent:
                 grouped.setdefault(s["date"], []).append(s)
@@ -751,13 +878,13 @@ with tabs[2]:
                     unsafe_allow_html=True
                 )
                 for s in sessions:
-                    ok        = s.get("correct", True)
-                    ok_icon   = "✅" if ok else "❌"
-                    ok_col    = "#15803d" if ok else "#be123c"
-                    ok_bg     = "#dcfce7" if ok else "#fee2e2"
-                    mins      = max(1, (s.get("time_taken") or 0) // 60)
-                    pattern   = s.get("pattern", "")
-                    title     = s.get("question_title", "")
+                    ok      = s.get("correct", True)
+                    ok_icon = "✅" if ok else "❌"
+                    ok_col  = "#15803d" if ok else "#be123c"
+                    ok_bg   = "#dcfce7" if ok else "#fee2e2"
+                    mins    = max(1, (s.get("time_taken") or 0) // 60)
+                    pattern = s.get("pattern", "")
+                    title   = s.get("question_title", "")
                     st.markdown(
                         f'<div style="display:flex;align-items:center;gap:10px;background:#fff;'
                         f'border:1px solid #ede9fe;border-radius:10px;padding:9px 14px;margin-bottom:5px;">'
@@ -771,40 +898,6 @@ with tabs[2]:
                         f'</div>',
                         unsafe_allow_html=True
                     )
-
-    with chart_col:
-        st.markdown(
-            '<div style="font-size:.7em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
-            'color:#7c3aed;margin-bottom:10px;">📊 Practice by Pattern</div>',
-            unsafe_allow_html=True
-        )
-        pc = act.get("pattern_counts", {})
-        if not pc:
-            st.markdown('<p style="color:#c4b5fd;font-size:.88em;">No data yet.</p>', unsafe_allow_html=True)
-        else:
-            max_count = max(pc.values()) or 1
-            grads = [
-                "linear-gradient(90deg,#7c3aed,#db2777)",
-                "linear-gradient(90deg,#6366f1,#a855f7)",
-                "linear-gradient(90deg,#db2777,#f97316)",
-                "linear-gradient(90deg,#0ea5e9,#6366f1)",
-                "linear-gradient(90deg,#a855f7,#ec4899)",
-            ]
-            for i, (pattern, count) in enumerate(list(pc.items())[:12]):
-                pct  = count / max_count * 100
-                grad = grads[i % len(grads)]
-                short = pattern if len(pattern) <= 20 else pattern[:18] + "…"
-                st.markdown(
-                    f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">'
-                    f'  <span style="font-size:.75em;color:#4c1d95;font-weight:500;min-width:130px;'
-                    f'    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{short}</span>'
-                    f'  <div style="flex:1;background:#f0ebff;border-radius:6px;height:9px;">'
-                    f'    <div style="width:{pct:.0f}%;background:{grad};height:9px;border-radius:6px;"></div>'
-                    f'  </div>'
-                    f'  <span style="font-size:.72em;color:#7c3aed;font-weight:700;min-width:22px;text-align:right;">{count}</span>'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
 
 
 # ══════════════════════════════════════════════════════════════════════════════

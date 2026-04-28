@@ -116,6 +116,9 @@ async def get_activity(db: AsyncSession, user_id: int) -> dict:
     all_logs = []
     sessions_by_date = {}
     pattern_counts = {}
+    daily_correct = {}
+    daily_wrong = {}
+    time_by_pattern = {}
 
     for log, q in rows:
         entry = {
@@ -128,8 +131,13 @@ async def get_activity(db: AsyncSession, user_id: int) -> dict:
         all_logs.append(entry)
         d = log.date or today
         sessions_by_date[d] = sessions_by_date.get(d, 0) + 1
+        if log.correct:
+            daily_correct[d] = daily_correct.get(d, 0) + 1
+        else:
+            daily_wrong[d] = daily_wrong.get(d, 0) + 1
         if q.pattern:
             pattern_counts[q.pattern] = pattern_counts.get(q.pattern, 0) + 1
+            time_by_pattern[q.pattern] = time_by_pattern.get(q.pattern, 0) + (log.time_taken or 0)
 
     all_logs.sort(key=lambda x: x["date"], reverse=True)
 
@@ -150,9 +158,14 @@ async def get_activity(db: AsyncSession, user_id: int) -> dict:
         "weekly_sessions": len(weekly_logs),
         "streak_days": streak,
         "sessions_by_date": sessions_by_date,
-        "recent_sessions": all_logs[:25],
+        "recent_sessions": all_logs[:50],
         "pattern_counts": dict(
             sorted(pattern_counts.items(), key=lambda x: x[1], reverse=True)
+        ),
+        "daily_correct": daily_correct,
+        "daily_wrong": daily_wrong,
+        "time_by_pattern": dict(
+            sorted(time_by_pattern.items(), key=lambda x: x[1], reverse=True)
         ),
     }
 

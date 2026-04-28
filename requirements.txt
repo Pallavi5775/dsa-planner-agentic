@@ -15,5 +15,6 @@ alembic
 python-jose[cryptography]
 httpx
 anthropic
+plotly
 
 
