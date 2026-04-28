@@ -176,8 +176,13 @@ html, body, [data-testid="stAppViewContainer"] {
 [data-testid="stSidebar"] {
     background: #1e0b38 !important;
     border-right: 1px solid #2d1457 !important;
+    min-width: 440px !important;
+    max-width: 440px !important;
 }
-[data-testid="stSidebar"] > div { padding-top: .8rem; }
+[data-testid="stSidebar"] > div:first-child {
+    min-width: 440px !important;
+    padding-top: .8rem;
+}
 [data-testid="stSidebar"] p,
 [data-testid="stSidebar"] span,
 [data-testid="stSidebar"] label { color: #e2d9f3 !important; }
@@ -190,7 +195,9 @@ html, body, [data-testid="stAppViewContainer"] {
     border: 1px solid #3d1a72 !important;
     color: #e9d5ff !important;
     border-radius: 10px !important;
-    font-size: .92em !important;
+    font-size: .95em !important;
+    line-height: 1.6 !important;
+    padding: 10px 12px !important;
 }
 [data-testid="stSidebar"] textarea:focus,
 [data-testid="stSidebar"] input:focus {
@@ -1061,6 +1068,22 @@ if has_github and JOURNAL_IDX is not None:
                               f"{s.get('pattern','?')} · {s.get('difficulty','?')} · ⏱ {time_label}")
 
                 with st.expander(label, expanded=False):
+                    gap_text    = (s.get("gap_analysis") or "").strip()
+                    insight_txt = (s.get("insight") or "").strip()
+
+                    # Prominent gap analysis banner (shown outside tabs so it's always visible)
+                    if gap_text:
+                        st.markdown(
+                            f'<div style="background:linear-gradient(135deg,#2d1457,#4a1060);'
+                            f'border-left:4px solid #f472b6;border-radius:0 12px 12px 0;'
+                            f'padding:12px 16px;margin-bottom:10px;">'
+                            f'<div style="font-size:.65em;font-weight:700;letter-spacing:1px;'
+                            f'text-transform:uppercase;color:#f472b6;margin-bottom:6px;">🔍 AI Gap Analysis</div>'
+                            f'<div style="font-size:.88em;color:#fce7f3;line-height:1.7;">{gap_text}</div>'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
+
                     inner = st.tabs(["💡 Logic", "💻 Code", "🤖 AI Insight"])
 
                     with inner[0]:
@@ -1078,9 +1101,8 @@ if has_github and JOURNAL_IDX is not None:
                             st.caption("No code recorded.")
 
                     with inner[2]:
-                        insight = (s.get("insight") or "").strip()
-                        if insight:
-                            st.markdown(insight)
+                        if insight_txt:
+                            st.markdown(insight_txt)
                         else:
                             st.caption("No AI insight yet. Ensure ANTHROPIC_API_KEY is set on the server.")
 
@@ -1201,15 +1223,16 @@ if st.session_state.active_qid:
                 )
 
             # ── Input fields ─────────────────────────────────────────────────
-            st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">Logic &amp; Code</p>', unsafe_allow_html=True)
-            new_logic = st.text_area("logic", value=q.get('logic',''), key="logic_input",    height=90,  label_visibility="collapsed", placeholder="Describe your approach step by step...")
-            new_code  = st.text_area("code",  value=q.get('code',''),  key="code_input",     height=110, label_visibility="collapsed", placeholder="Paste or type your solution...")
+            st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">💡 Logic / Approach</p>', unsafe_allow_html=True)
+            new_logic = st.text_area("logic", value=q.get('logic',''), key="logic_input",    height=160, label_visibility="collapsed", placeholder="Describe your approach step by step — what data structure, why this algorithm, what edge cases you considered...")
+            st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">💻 Code</p>', unsafe_allow_html=True)
+            new_code  = st.text_area("code",  value=q.get('code',''),  key="code_input",     height=240, label_visibility="collapsed", placeholder="Paste or type your solution here...")
 
             st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">📝 Notes</p>', unsafe_allow_html=True)
-            new_notes = st.text_area("notes", value=q.get('notes') or '', key="notes_input", height=80,  label_visibility="collapsed", placeholder="Key insight, pattern trick, edge case...")
+            new_notes = st.text_area("notes", value=q.get('notes') or '', key="notes_input", height=110, label_visibility="collapsed", placeholder="Key insight, pattern trick, edge case to remember...")
 
             st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">🔍 My Gap Analysis</p>', unsafe_allow_html=True)
-            new_gap   = st.text_area("gap",   value=q.get('my_gap_analysis') or '', key="gap_input", height=80, label_visibility="collapsed", placeholder="Where did my thinking break down?")
+            new_gap   = st.text_area("gap",   value=q.get('my_gap_analysis') or '', key="gap_input", height=110, label_visibility="collapsed", placeholder="Where did my thinking break down? What would I do differently?")
 
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 

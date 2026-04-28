@@ -14,55 +14,54 @@ from backend.core.security import get_current_user_id, require_admin
 router = APIRouter()
 
 
-async def _auto_validate(user_id: int, qid: int) -> None:
-    """Background task: run AI validation on a just-saved session."""
-    log.info("[validate] starting for user=%s qid=%s", user_id, qid)
-    try:
-        from backend.db.session import AsyncSessionLocal
-        async with AsyncSessionLocal() as db:
-            result = await crud.validate_question(db, qid, user_id)
-        log.info("[validate] done for qid=%s correct=%s", qid, result.get("correct") if result else "no-result")
-    except Exception as e:
-        log.error("[validate] failed for user=%s qid=%s: %s", user_id, qid, e, exc_info=True)
-
-
-async def _push_to_github(user_id: int, session_data: dict) -> None:
-    """Background task: commit session JSON + AI insight to the user's private GitHub repo."""
+async def _validate_then_push(user_id: int, qid: int, session_data: dict) -> None:
+    """Background task: AI-validate the session, then push to GitHub with gap_analysis included."""
     q = session_data.get("question", "?")
-    log.info("[github] starting push for user=%s question=%s", user_id, q)
+    log.info("[session] starting validate+push for user=%s qid=%s", user_id, qid)
     try:
         from backend.db.session import AsyncSessionLocal
         from backend.db.models import User as UserModel
         from backend.services.github_storage import GitHubStorageService
         from backend.services.ai_insights import generate_session_insight, has_api_key
 
+        # Step 1 — AI validate: saves accuracy/suggestions/revision_status to DB
+        gap_analysis = ""
+        try:
+            async with AsyncSessionLocal() as db:
+                result = await crud.validate_question(db, qid, user_id)
+            gap_analysis = result.get("suggestions", "") if result else ""
+            log.info("[session] validate done for qid=%s correct=%s", qid, result.get("correct") if result else "no-result")
+        except Exception as ve:
+            log.error("[session] validate failed for qid=%s: %s", qid, ve, exc_info=True)
+
+        # Step 2 — push to GitHub (skip if no GitHub token)
         async with AsyncSessionLocal() as db:
             user = await db.get(UserModel, user_id)
-            if not user or not user.github_access_token or not user.github_username:
-                log.info("[github] user=%s has no github token — skipping", user_id)
-                return
+        if not user or not user.github_access_token or not user.github_username:
+            log.info("[session] user=%s has no github token — skipping push", user_id)
+            return
 
-        log.info("[github] ensuring repo for %s", user.github_username)
         svc = GitHubStorageService(user.github_access_token, user.github_username)
         await svc.ensure_repo()
 
-        log.info("[github] committing session JSON for %s", q)
+        # Include AI gap analysis in the session JSON so it's visible in the journal
+        session_data["gap_analysis"] = gap_analysis
         committed = await svc.commit_session(session_data)
-        log.info("[github] session commit=%s", committed)
+        log.info("[session] session commit=%s for %s", committed, q)
 
+        # Step 3 — generate and commit AI insight markdown
         if not has_api_key():
-            log.info("[github] ANTHROPIC_API_KEY not set — skipping insight")
+            log.info("[session] ANTHROPIC_API_KEY not set — skipping insight")
         elif committed:
             try:
-                log.info("[github] generating AI insight for %s", q)
                 insight_md = await generate_session_insight(session_data)
                 ok = await svc.commit_insight(insight_md, session_data["date"], q)
-                log.info("[github] insight commit=%s", ok)
+                log.info("[session] insight commit=%s for %s", ok, q)
             except Exception as ie:
-                log.warning("[github] insight skipped for %s (session still saved): %s", q, ie)
+                log.warning("[session] insight skipped for %s: %s", q, ie)
 
     except Exception as e:
-        log.error("[github] push failed for user=%s question=%s: %s", user_id, q, e, exc_info=True)
+        log.error("[session] validate+push failed for user=%s qid=%s: %s", user_id, qid, e, exc_info=True)
 
 
 @router.get("/activity")
@@ -123,8 +122,7 @@ async def add_log(
         "logic":              latest.get("logic", ""),
         "code":               latest.get("code", ""),
     }
-    background_tasks.add_task(_auto_validate, user_id, qid)
-    background_tasks.add_task(_push_to_github, user_id, session_data)
+    background_tasks.add_task(_validate_then_push, user_id, qid, session_data)
 
     return result
 
