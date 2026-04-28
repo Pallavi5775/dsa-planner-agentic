@@ -150,6 +150,31 @@ async def update_notes(
     return await crud.update_notes(db, qid, notes, my_gap_analysis, user_id)
 
 
+@router.get("/questions/{qid}/last-log")
+async def get_last_log(
+    qid: int,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    record = await crud.get_last_log(db, qid, user_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="No log found")
+    return record
+
+
+@router.patch("/questions/{qid}/last-log")
+async def update_last_log(
+    qid: int,
+    logic: str = Body(""),
+    code: str = Body(""),
+    notes: str = Body(""),
+    my_gap_analysis: str = Body(""),
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    return await crud.update_last_log(db, qid, user_id, logic, code, notes, my_gap_analysis)
+
+
 @router.post("/questions/{qid}/validate")
 async def validate(
     qid: int,

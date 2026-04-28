@@ -427,7 +427,7 @@ if not st.session_state.get('token'):
     show_auth_page()
 
 # ── INIT ──────────────────────────────────────────────────────────────────────
-for key, val in [("active_qid", None), ("cal_year", datetime.now().year), ("cal_month", datetime.now().month)]:
+for key, val in [("active_qid", None), ("view_last_qid", None), ("cal_year", datetime.now().year), ("cal_month", datetime.now().month)]:
     if key not in st.session_state:
         st.session_state[key] = val
 
@@ -613,15 +613,22 @@ with tabs[0]:
                 f'</div>'
             )
 
-            col_card, col_btn = st.columns([0.84, 0.16])
+            col_card, col_p, col_v = st.columns([0.72, 0.14, 0.14])
             with col_card:
                 st.markdown(card_html, unsafe_allow_html=True)
-            with col_btn:
+            with col_p:
                 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
                 if st.button("Practice →", key=f"sel_{row['id']}", use_container_width=True):
-                    st.session_state.active_qid = int(row['id'])
-                    if 'start_timestamp' in st.session_state:
-                        del st.session_state.start_timestamp
+                    st.session_state.active_qid   = int(row['id'])
+                    st.session_state.view_last_qid = None
+                    st.session_state.pop('start_timestamp', None)
+                    st.rerun()
+            with col_v:
+                st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+                if st.button("Last Record", key=f"last_{row['id']}", use_container_width=True):
+                    st.session_state.view_last_qid = int(row['id'])
+                    st.session_state.active_qid    = None
+                    st.session_state.pop('start_timestamp', None)
                     st.rerun()
 
 
@@ -1142,6 +1149,110 @@ if is_admin and ADMIN_IDX is not None:
                         st.error(f"Upload failed: {resp.text}")
                 except Exception as e:
                     st.error(f"Error: {e}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  SIDEBAR — LAST RECORD PANEL
+# ══════════════════════════════════════════════════════════════════════════════
+if st.session_state.get("view_last_qid") and not st.session_state.get("active_qid"):
+    with st.sidebar:
+        qid_lr = st.session_state.view_last_qid
+
+        # Fetch last log from API (cache in session_state to avoid repeated calls)
+        cache_key = f"last_log_{qid_lr}"
+        if cache_key not in st.session_state:
+            try:
+                r = requests.get(f"{API_URL}/questions/{qid_lr}/last-log",
+                                 headers=auth_headers(), timeout=8)
+                st.session_state[cache_key] = r.json() if r.status_code == 200 else None
+            except Exception:
+                st.session_state[cache_key] = None
+
+        rec = st.session_state.get(cache_key)
+
+        if rec is None:
+            st.markdown(
+                '<div style="font-size:.88em;color:#f472b6;padding:20px 0;">'
+                '📭 No practice record found for this question yet.<br>'
+                'Hit <b>Practice →</b> to create your first session!</div>',
+                unsafe_allow_html=True,
+            )
+            if st.button("✖ Close", use_container_width=True, key="lr_close_empty"):
+                st.session_state.view_last_qid = None
+                st.rerun()
+        else:
+            # Header
+            st.markdown(
+                f'<div style="font-size:1em;font-weight:800;padding:6px 0 6px;'
+                f'border-bottom:1px solid #2d1457;margin-bottom:10px;'
+                f'background:linear-gradient(90deg,#c084fc,#f472b6);'
+                f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;">'
+                f'📖 {rec["question_title"]}</div>',
+                unsafe_allow_html=True,
+            )
+
+            # Meta strip: date · correct/wrong · time
+            mins_lr = (rec.get("time_taken") or 0) // 60
+            secs_lr = (rec.get("time_taken") or 0) % 60
+            ok_lr   = rec.get("correct", True)
+            st.markdown(
+                f'<div style="background:#2a1050;border:1px solid #3d1a72;border-radius:12px;'
+                f'padding:10px 14px;margin-bottom:12px;display:flex;gap:16px;flex-wrap:wrap;">'
+                f'  <span style="font-size:.78em;color:#a78bfa;">📅 {rec.get("date","—")}</span>'
+                f'  <span style="font-size:.78em;color:{"#86efac" if ok_lr else "#f9a8d4"};">'
+                f'    {"✅ Correct" if ok_lr else "❌ Needs Work"}</span>'
+                f'  <span style="font-size:.78em;color:#a78bfa;">⏱ {mins_lr}m {secs_lr}s</span>'
+                f'  <span style="font-size:.78em;color:#7c3aed;">{rec.get("pattern","")}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+            # Editable fields
+            st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:10px 0 4px;">💡 Logic / Approach</p>', unsafe_allow_html=True)
+            lr_logic = st.text_area("lr_logic", value=rec.get("logic", ""), key="lr_logic_input",
+                                    height=160, label_visibility="collapsed",
+                                    placeholder="Describe your approach step by step...")
+
+            st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">💻 Code</p>', unsafe_allow_html=True)
+            lr_code = st.text_area("lr_code", value=rec.get("code", ""), key="lr_code_input",
+                                   height=240, label_visibility="collapsed",
+                                   placeholder="Your solution code...")
+
+            st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">📝 Notes</p>', unsafe_allow_html=True)
+            lr_notes = st.text_area("lr_notes", value=rec.get("notes", "") or "", key="lr_notes_input",
+                                    height=110, label_visibility="collapsed",
+                                    placeholder="Key insight, pattern trick, edge case to remember...")
+
+            st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">🔍 My Gap Analysis</p>', unsafe_allow_html=True)
+            lr_gap = st.text_area("lr_gap", value=rec.get("my_gap_analysis", "") or "", key="lr_gap_input",
+                                  height=110, label_visibility="collapsed",
+                                  placeholder="Where did my thinking break down?")
+
+            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+            lr_save, lr_close = st.columns(2)
+            if lr_save.button("💾 Save", type="primary", use_container_width=True, key="lr_save"):
+                try:
+                    r = requests.patch(
+                        f"{API_URL}/questions/{qid_lr}/last-log",
+                        json={"logic": lr_logic, "code": lr_code,
+                              "notes": lr_notes, "my_gap_analysis": lr_gap},
+                        headers=auth_headers(),
+                        timeout=8,
+                    )
+                    if r.status_code == 200:
+                        # Bust the cache so next open re-fetches
+                        st.session_state.pop(cache_key, None)
+                        st.success("Saved!")
+                    else:
+                        st.error("Save failed.")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+            if lr_close.button("✖ Close", use_container_width=True, key="lr_close"):
+                st.session_state.view_last_qid = None
+                st.session_state.pop(cache_key, None)
+                st.rerun()
 
 
 # ══════════════════════════════════════════════════════════════════════════════

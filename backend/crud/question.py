@@ -306,6 +306,61 @@ async def update_notes(db: AsyncSession, qid: int, notes: str, my_gap_analysis: 
     return {"status": "ok"}
 
 
+async def get_last_log(db: AsyncSession, qid: int, user_id: int) -> dict | None:
+    """Return the most recent PracticeLog for a question + the progress notes/gap."""
+    logs = await _get_user_logs(db, qid, user_id)
+    if not logs:
+        return None
+    latest = max(logs, key=lambda l: (l.date or ""), default=None)
+    if not latest:
+        return None
+
+    result = await db.execute(select(Question).where(Question.id == qid))
+    q = result.scalar_one_or_none()
+
+    progress_res = await db.execute(
+        select(UserQuestionProgress).where(
+            UserQuestionProgress.question_id == qid,
+            UserQuestionProgress.user_id == user_id,
+        )
+    )
+    p = progress_res.scalar_one_or_none()
+
+    return {
+        "log_id":        latest.id,
+        "date":          latest.date or "",
+        "logic":         latest.logic or "",
+        "code":          latest.code or "",
+        "time_taken":    latest.time_taken or 0,
+        "correct":       latest.correct,
+        "notes":         p.notes if p else "",
+        "my_gap_analysis": p.my_gap_analysis if p else "",
+        "question_title":  q.title if q else "",
+        "pattern":         q.pattern if q else "",
+        "difficulty":      q.difficulty if q else "",
+    }
+
+
+async def update_last_log(db: AsyncSession, qid: int, user_id: int,
+                          logic: str, code: str,
+                          notes: str, my_gap_analysis: str) -> dict:
+    """Update logic+code on the most recent PracticeLog and notes/gap on progress."""
+    logs = await _get_user_logs(db, qid, user_id)
+    if not logs:
+        raise HTTPException(status_code=404, detail="No practice log found for this question")
+
+    latest = max(logs, key=lambda l: (l.date or ""))
+    latest.logic = logic
+    latest.code = code
+
+    p = await _get_or_create_progress(db, qid, user_id)
+    p.notes = notes
+    p.my_gap_analysis = my_gap_analysis
+
+    await db.commit()
+    return {"status": "ok", "log_id": latest.id}
+
+
 async def validate_question(db: AsyncSession, qid: int, user_id: int):
     result = await db.execute(select(Question).where(Question.id == qid))
     q = result.scalar_one_or_none()
