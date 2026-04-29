@@ -68,8 +68,9 @@ async def _validate_then_push(user_id: int, qid: int, session_data: dict) -> Non
 async def get_activity(
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
+    tz: str = "UTC",
 ):
-    return await crud.get_activity(db, user_id)
+    return await crud.get_activity(db, user_id, tz=tz)
 
 
 @router.get("/questions")

@@ -3,7 +3,8 @@ import os
 import calendar as cal_lib
 import streamlit as st
 import requests
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
+from zoneinfo import ZoneInfo
 import pandas as pd
 import time
 from streamlit_autorefresh import st_autorefresh
@@ -221,7 +222,9 @@ html, body, [data-testid="stAppViewContainer"] {
 # ── HELPERS ───────────────────────────────────────────────────────────────────
 def fetch_activity():
     try:
-        r = requests.get(f"{API_URL}/activity", headers=auth_headers(), timeout=8)
+        tz_name = st.query_params.get("tz", "UTC")
+        r = requests.get(f"{API_URL}/activity", headers=auth_headers(),
+                         params={"tz": tz_name}, timeout=8)
         return r.json() if r.status_code == 200 else {}
     except:
         return {}
@@ -426,8 +429,41 @@ def build_calendar(questions, year, month):
 if not st.session_state.get('token'):
     show_auth_page()
 
+# ── TIMEZONE DETECTION ────────────────────────────────────────────────────────
+# JS writes the browser's IANA timezone into ?tz= so Python can read it on the
+# next rerun (any button click, etc.).  Falls back to UTC if unavailable.
+st.markdown("""
+<script>
+(function() {
+    var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    var url = new URL(window.parent.location);
+    if (url.searchParams.get('tz') !== tz) {
+        url.searchParams.set('tz', tz);
+        window.parent.history.replaceState({}, '', url);
+    }
+})();
+</script>
+""", unsafe_allow_html=True)
+
+
+def _user_tz() -> ZoneInfo:
+    tz_name = st.query_params.get("tz", "UTC")
+    try:
+        return ZoneInfo(tz_name)
+    except Exception:
+        return ZoneInfo("UTC")
+
+
+def _local_now() -> datetime:
+    return datetime.now(_user_tz())
+
+
+def _local_today() -> str:
+    return _local_now().strftime("%Y-%m-%d")
+
+
 # ── INIT ──────────────────────────────────────────────────────────────────────
-for key, val in [("active_qid", None), ("view_last_qid", None), ("cal_year", datetime.now().year), ("cal_month", datetime.now().month)]:
+for key, val in [("active_qid", None), ("view_last_qid", None), ("cal_year", _local_now().year), ("cal_month", _local_now().month)]:
     if key not in st.session_state:
         st.session_state[key] = val
 
@@ -515,8 +551,8 @@ with tabs[0]:
     if df.empty:
         st.info("No problems found. Upload a markdown file to get started.")
     else:
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        week_str  = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
+        today_str = _local_today()
+        week_str  = (_local_now() + timedelta(days=7)).strftime("%Y-%m-%d")
 
         # ── Metrics ──────────────────────────────────────────────────────────
         covered  = len(df[df['coverage_status'] == 'Covered'])
@@ -636,7 +672,7 @@ with tabs[0]:
 #  TAB 1 — CALENDAR
 # ══════════════════════════════════════════════════════════════════════════════
 with tabs[1]:
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    today_str = _local_today()
 
     nav_l, nav_m, nav_r = st.columns([0.1, 0.8, 0.1])
     if nav_l.button("◀", key="cal_prev", use_container_width=True):
@@ -992,43 +1028,52 @@ with tabs[3]:
 # ══════════════════════════════════════════════════════════════════════════════
 if has_github and JOURNAL_IDX is not None:
     with tabs[JOURNAL_IDX]:
-        st.markdown("## 📖 Practice Journal")
-        st.caption("Your sessions are stored in a private GitHub repo — only you can see them.")
 
         gh_user  = st.session_state.get("github_username", "")
         repo_url = f"https://github.com/{gh_user}/dsa-planner-data"
-        st.markdown(
-            f'<a href="{repo_url}" target="_blank" style="color:#7c3aed;font-size:.85em">'
-            f'🔗 View raw repo: {gh_user}/dsa-planner-data</a>',
-            unsafe_allow_html=True,
-        )
 
-        # Ensure the private repo exists (silently, on first visit)
+        # ── Top bar ───────────────────────────────────────────────────────────
+        jh1, jh2, jh3, jh4, jh5 = st.columns([2, 1.5, 1, 1, 0.7])
+        with jh1:
+            search_q = st.text_input("", "", key="jrn_search",
+                                     placeholder="🔍 Search question…",
+                                     label_visibility="collapsed")
+        with jh2:
+            result_filter = st.selectbox("", ["All", "Correct ✅", "Incorrect ❌"],
+                                         key="jrn_filter", label_visibility="collapsed")
+        with jh3:
+            pat_opts = ["All patterns"]
+            _raw = st.session_state.get("gh_journal", [])
+            pat_opts += sorted({s.get("pattern","") for s in _raw if s.get("pattern")})
+            pat_filter = st.selectbox("", pat_opts, key="jrn_pat", label_visibility="collapsed")
+        with jh4:
+            page_size = st.selectbox("", [25, 50, 100], key="jrn_pgsz",
+                                     label_visibility="collapsed",
+                                     format_func=lambda x: f"{x} / page")
+        with jh5:
+            if st.button("🔄", help="Refresh from GitHub", use_container_width=True):
+                st.session_state.pop("gh_journal", None)
+                st.session_state.jrn_page = 0
+                st.rerun()
+
+        # ── Ensure repo exists ────────────────────────────────────────────────
         if not st.session_state.get("gh_repo_ensured"):
             try:
-                requests.post(f"{API_URL}/github/setup",
-                              headers=auth_headers(), timeout=15)
+                requests.post(f"{API_URL}/github/setup", headers=auth_headers(), timeout=15)
                 st.session_state.gh_repo_ensured = True
             except Exception:
                 pass
 
-        st.divider()
-
-        load_col, filter_col1, filter_col2 = st.columns([1, 2, 2])
-        with load_col:
-            if st.button("🔄 Load / Refresh", type="primary"):
-                st.session_state.pop("gh_journal", None)
-
-        # Fetch from API (cached in session_state until refresh)
+        # ── Fetch ─────────────────────────────────────────────────────────────
         if "gh_journal" not in st.session_state:
             with st.spinner("Fetching sessions from GitHub…"):
                 try:
                     r = requests.get(f"{API_URL}/github/history",
                                      headers=auth_headers(), timeout=30)
-                    if r.status_code == 200:
-                        st.session_state.gh_journal = r.json().get("sessions", [])
-                    else:
-                        st.session_state.gh_journal = []
+                    st.session_state.gh_journal = (
+                        r.json().get("sessions", []) if r.status_code == 200 else []
+                    )
+                    if r.status_code != 200:
                         st.error("Could not load sessions from GitHub.")
                 except Exception as e:
                     st.session_state.gh_journal = []
@@ -1039,14 +1084,7 @@ if has_github and JOURNAL_IDX is not None:
         if not sessions:
             st.info("No practice sessions yet. Complete a session to start tracking!")
         else:
-            with filter_col1:
-                search_q = st.text_input("🔍 Search question", "", key="jrn_search",
-                                         placeholder="e.g. Two Sum")
-            with filter_col2:
-                result_filter = st.selectbox("Filter by result",
-                                             ["All", "Correct ✅", "Incorrect ❌"],
-                                             key="jrn_filter")
-
+            # ── Filter ────────────────────────────────────────────────────────
             filtered = sessions
             if search_q:
                 filtered = [s for s in filtered
@@ -1055,64 +1093,152 @@ if has_github and JOURNAL_IDX is not None:
                 filtered = [s for s in filtered if s.get("correct")]
             elif result_filter == "Incorrect ❌":
                 filtered = [s for s in filtered if not s.get("correct")]
+            if pat_filter != "All patterns":
+                filtered = [s for s in filtered if s.get("pattern") == pat_filter]
 
-            st.markdown(f"**{len(filtered)} session(s)**")
-            st.divider()
+            total      = len(filtered)
+            correct_ct = sum(1 for s in filtered if s.get("correct"))
+            avg_sec    = (sum(s.get("time_taken_seconds", 0) for s in filtered)
+                          // max(1, total))
+            avg_min, avg_s = divmod(avg_sec, 60)
+            acc_pct = round(correct_ct / total * 100) if total else 0
+            acc_col = "#22c55e" if acc_pct >= 80 else "#f59e0b" if acc_pct >= 60 else "#ec4899"
 
+            # Stats bar
+            st.markdown(
+                f'<div style="display:flex;gap:20px;align-items:center;'
+                f'background:#fff;border:1.5px solid #ede9fe;border-radius:12px;'
+                f'padding:8px 16px;margin:6px 0 10px;flex-wrap:wrap;">'
+                f'<span style="font-size:.78em;color:#6b7280;">'
+                f'  <b style="color:#1e1b4b;">{total}</b> session{"s" if total!=1 else ""}'
+                f'</span>'
+                f'<span style="font-size:.78em;color:#6b7280;">·</span>'
+                f'<span style="font-size:.78em;color:{acc_col};font-weight:700;">'
+                f'  {correct_ct} correct ({acc_pct}%)'
+                f'</span>'
+                f'<span style="font-size:.78em;color:#6b7280;">·</span>'
+                f'<span style="font-size:.78em;color:#6b7280;">'
+                f'  avg ⏱ {avg_min}m {avg_s}s'
+                f'</span>'
+                f'<span style="margin-left:auto;font-size:.72em;color:#a78bfa;">'
+                f'  <a href="{repo_url}" target="_blank" style="color:#a78bfa;text-decoration:none;">'
+                f'  🔗 {gh_user}/dsa-planner-data</a>'
+                f'</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+            # ── Pagination ────────────────────────────────────────────────────
+            if "jrn_page" not in st.session_state:
+                st.session_state.jrn_page = 0
+            # clamp page if filter narrowed the list
+            total_pages = max(1, (total + page_size - 1) // page_size)
+            if st.session_state.jrn_page >= total_pages:
+                st.session_state.jrn_page = 0
+            page = st.session_state.jrn_page
+            page_sessions = filtered[page * page_size: (page + 1) * page_size]
+
+            # ── Session rows ──────────────────────────────────────────────────
             current_date = None
-            for s in filtered:
-                date = s.get("date", "Unknown date")
-                if date != current_date:
-                    st.markdown(f"### 📅 {date}")
-                    current_date = date
+            for s in page_sessions:
+                s_date = s.get("date", "")
+
+                # Compact date group divider
+                if s_date != current_date:
+                    try:
+                        d_fmt = datetime.strptime(s_date, "%Y-%m-%d").strftime("%a, %d %b %Y")
+                    except Exception:
+                        d_fmt = s_date
+                    st.markdown(
+                        f'<div style="display:flex;align-items:center;gap:8px;'
+                        f'margin:14px 0 4px;">'
+                        f'<span style="font-size:.68em;font-weight:700;color:#7c3aed;'
+                        f'white-space:nowrap;">📅 {d_fmt}</span>'
+                        f'<div style="flex:1;height:1px;background:#ede9fe;"></div>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+                    current_date = s_date
 
                 correct    = s.get("correct", True)
                 mins       = s.get("time_taken_seconds", 0) // 60
-                secs       = s.get("time_taken_seconds", 0) % 60
-                time_label = f"{mins}m {secs}s" if mins else f"{secs}s"
-                badge      = "✅" if correct else "❌"
-                label      = (f"{badge} **{s.get('question','')}** · "
-                              f"{s.get('pattern','?')} · {s.get('difficulty','?')} · ⏱ {time_label}")
+                secs_rem   = s.get("time_taken_seconds", 0) % 60
+                time_label = f"{mins}m {secs_rem}s" if mins else f"{secs_rem}s"
+                icon       = "✅" if correct else "❌"
+                diff       = s.get("difficulty", "")
+                diff_col   = {"Easy": "#16a34a", "Medium": "#d97706", "Hard": "#dc2626"}.get(diff, "#6b7280")
+                label      = (
+                    f'{icon}  {s.get("question", "")}   ·   '
+                    f'{s.get("pattern", "?")}   ·   '
+                    f'{diff}   ·   ⏱ {time_label}'
+                )
 
                 with st.expander(label, expanded=False):
                     gap_text    = (s.get("gap_analysis") or "").strip()
                     insight_txt = (s.get("insight") or "").strip()
+                    logic       = (s.get("logic") or "").strip()
+                    code        = (s.get("code") or "").strip()
 
-                    inner = st.tabs(["💡 Logic", "💻 Code", "🔍 Gap Analysis", "🤖 AI Insight"])
-
-                    with inner[0]:
-                        logic = (s.get("logic") or "").strip()
+                    # Logic + Code side by side
+                    lc, rc = st.columns(2, gap="medium")
+                    with lc:
+                        st.markdown(
+                            '<p style="font-size:.62em;font-weight:700;letter-spacing:.8px;'
+                            'text-transform:uppercase;color:#7c3aed;margin:0 0 4px;">💡 Logic</p>',
+                            unsafe_allow_html=True)
                         if logic:
-                            st.markdown(logic)
+                            st.markdown(
+                                f'<div style="font-size:.82em;line-height:1.6;color:#374151;'
+                                f'background:#f9f7ff;border-radius:8px;padding:8px 10px;">'
+                                f'{logic}</div>',
+                                unsafe_allow_html=True)
                         else:
-                            st.caption("No logic recorded.")
+                            st.caption("—")
 
-                    with inner[1]:
-                        code = (s.get("code") or "").strip()
+                    with rc:
+                        st.markdown(
+                            '<p style="font-size:.62em;font-weight:700;letter-spacing:.8px;'
+                            'text-transform:uppercase;color:#7c3aed;margin:0 0 4px;">💻 Code</p>',
+                            unsafe_allow_html=True)
                         if code:
                             st.code(code, language="python")
                         else:
-                            st.caption("No code recorded.")
+                            st.caption("—")
 
-                    with inner[2]:
-                        if gap_text:
-                            st.markdown(
-                                f'<div style="background:linear-gradient(135deg,#1a0533,#2d1457);'
-                                f'border:1px solid #3d1a72;border-radius:12px;padding:16px 18px;">'
-                                f'<div style="font-size:.65em;font-weight:700;letter-spacing:1px;'
-                                f'text-transform:uppercase;color:#f472b6;margin-bottom:10px;">🔍 AI Gap Analysis</div>'
-                                f'<div style="font-size:.88em;color:#fce7f3;line-height:1.8;">{gap_text}</div>'
-                                f'</div>',
-                                unsafe_allow_html=True,
-                            )
-                        else:
-                            st.caption("No gap analysis yet — save a session to generate one.")
+                    # Gap analysis card (full width, below)
+                    if gap_text:
+                        st.markdown(
+                            f'<div style="background:linear-gradient(135deg,#1a0533,#2d1457);'
+                            f'border-left:3px solid #f472b6;border-radius:0 10px 10px 0;'
+                            f'padding:10px 14px;margin-top:8px;">'
+                            f'<div style="font-size:.6em;font-weight:700;letter-spacing:1px;'
+                            f'text-transform:uppercase;color:#f472b6;margin-bottom:6px;">🔍 Gap Analysis</div>'
+                            f'<div style="font-size:.82em;color:#fce7f3;line-height:1.7;">{gap_text}</div>'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
 
-                    with inner[3]:
-                        if insight_txt:
+                    # AI insight — collapsed inside to save space
+                    if insight_txt:
+                        with st.expander("🤖 AI Insight", expanded=False):
                             st.markdown(insight_txt)
-                        else:
-                            st.caption("No AI insight yet. Ensure ANTHROPIC_API_KEY is set on the server.")
+
+            # ── Pagination controls ───────────────────────────────────────────
+            if total_pages > 1:
+                st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+                pg1, pg2, pg3, pg4, pg5 = st.columns([1, 1, 2, 1, 1])
+                if pg1.button("⏮ First", use_container_width=True, disabled=(page == 0)):
+                    st.session_state.jrn_page = 0; st.rerun()
+                if pg2.button("◀ Prev",  use_container_width=True, disabled=(page == 0)):
+                    st.session_state.jrn_page -= 1; st.rerun()
+                pg3.markdown(
+                    f'<div style="text-align:center;padding-top:6px;font-size:.82em;'
+                    f'color:#7c3aed;font-weight:600;">Page {page+1} / {total_pages}</div>',
+                    unsafe_allow_html=True)
+                if pg4.button("Next ▶",  use_container_width=True, disabled=(page >= total_pages-1)):
+                    st.session_state.jrn_page += 1; st.rerun()
+                if pg5.button("Last ⏭",  use_container_width=True, disabled=(page >= total_pages-1)):
+                    st.session_state.jrn_page = total_pages - 1; st.rerun()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1372,7 +1498,7 @@ if st.session_state.active_qid:
             col_save, col_close = st.columns(2)
             if col_save.button("💾 Save", type="primary", use_container_width=True):
                 requests.post(f"{API_URL}/questions/{q['id']}/log",
-                              json={"logic": new_logic, "code": new_code, "time_taken": elapsed},
+                              json={"logic": new_logic, "code": new_code, "time_taken": elapsed, "date": _local_today()},
                               headers=auth_headers())
                 requests.patch(f"{API_URL}/questions/{q['id']}/notes",
                                json={"notes": new_notes, "my_gap_analysis": new_gap},

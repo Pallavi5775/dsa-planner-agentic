@@ -2,7 +2,8 @@
 import os
 import re
 import json
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -99,8 +100,11 @@ async def _get_user_logs(db: AsyncSession, question_id: int, user_id: int) -> li
     return result.scalars().all()
 
 
-async def get_activity(db: AsyncSession, user_id: int) -> dict:
-    from datetime import timedelta
+async def get_activity(db: AsyncSession, user_id: int, tz: str = "UTC") -> dict:
+    try:
+        _tz = ZoneInfo(tz)
+    except Exception:
+        _tz = ZoneInfo("UTC")
 
     logs_result = await db.execute(
         select(PracticeLog, Question)
@@ -109,8 +113,9 @@ async def get_activity(db: AsyncSession, user_id: int) -> dict:
     )
     rows = logs_result.all()
 
-    today = datetime.now().strftime("%Y-%m-%d")
-    today_dt = datetime.now().date()
+    now_local = datetime.now(_tz)
+    today = now_local.strftime("%Y-%m-%d")
+    today_dt = now_local.date()
     week_start = (today_dt - timedelta(days=today_dt.weekday())).strftime("%Y-%m-%d")
 
     all_logs = []
@@ -265,7 +270,7 @@ async def add_log(db: AsyncSession, qid: int, log_data: dict, user_id: int):
     log = PracticeLog(
         question_id=qid,
         user_id=user_id,
-        date=datetime.now().strftime("%Y-%m-%d"),
+        date=log_data.get("date") or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         logic=log_data.get("logic", ""),
         code=log_data.get("code", ""),
         time_taken=min(log_data.get("time_taken", 0), 3600),
@@ -371,7 +376,7 @@ async def validate_question(db: AsyncSession, qid: int, user_id: int):
     user_logs = await _get_user_logs(db, qid, user_id)
     question_dict = _question_to_dict(q, p, user_logs)
 
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     prompt = f"""
 You are an expert DSA Tutor and Spaced Repetition System (SRS).
 Your task is to analyze a student's session and update the question metadata.
@@ -499,7 +504,7 @@ async def recalculate_next_revisions(db: AsyncSession, user_id: int, practice_da
         if existing is None or log.date > existing:
             last_date_by_qid[log.question_id] = log.date
 
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     updated = 0
     for p in progress_rows:
         if not p.interval_days:
