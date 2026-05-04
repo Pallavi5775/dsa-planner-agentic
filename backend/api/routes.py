@@ -208,7 +208,13 @@ async def hint_chat(
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    return await crud.hint_chat(db, qid, body.get("message", ""), body.get("context", {}))
+    return await crud.hint_chat(
+        db, qid,
+        message=body.get("message", ""),
+        context=body.get("context", {}),
+        history=body.get("history", []),
+        generate_variations=body.get("generate_variations", False),
+    )
 
 
 @router.post("/upload_md")

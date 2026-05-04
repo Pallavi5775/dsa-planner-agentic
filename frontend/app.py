@@ -2786,59 +2786,117 @@ if st.session_state.active_qid:
 
             chat_msgs = st.session_state[chat_key]
 
-            # Render conversation history
+            # ── helper: render markdown bold + newlines inside an HTML bubble ──
+            def _fmt_bubble(text):
+                import re
+                text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+                text = text.replace("\n", "<br>")
+                return text
+
+            # ── conversation bubbles ──────────────────────────────────────────
             if chat_msgs:
                 bubbles = ""
-                for msg in chat_msgs[-6:]:
+                for msg in chat_msgs[-10:]:
+                    is_variation = msg.get("is_variation", False)
                     if msg["role"] == "user":
                         bubbles += (
-                            f'<div style="display:flex;justify-content:flex-end;margin-bottom:6px;">'
-                            f'<div style="background:#4c1d95;color:#e9d5ff;border-radius:14px 14px 2px 14px;'
-                            f'padding:7px 12px;font-size:.8em;max-width:85%;line-height:1.5;">'
-                            f'{msg["content"]}</div></div>'
+                            f'<div style="display:flex;justify-content:flex-end;margin-bottom:7px;">'
+                            f'<div style="background:#4c1d95;color:#e9d5ff;'
+                            f'border-radius:14px 14px 2px 14px;'
+                            f'padding:8px 13px;font-size:.8em;max-width:82%;line-height:1.55;">'
+                            f'{_fmt_bubble(msg["content"])}</div></div>'
                         )
                     else:
+                        bubble_bg    = "#1a3a2a" if is_variation else "#2a1050"
+                        bubble_border = "#22c55e" if is_variation else "#5b21b6"
+                        bubble_label  = '<span style="font-size:.65em;color:#86efac;font-weight:700;display:block;margin-bottom:4px;">🔀 VARIATIONS</span>' if is_variation else ""
                         bubbles += (
-                            f'<div style="display:flex;justify-content:flex-start;margin-bottom:6px;">'
-                            f'<div style="background:#2a1050;border:1px solid #5b21b6;color:#f3e8ff;'
-                            f'border-radius:14px 14px 14px 2px;'
-                            f'padding:7px 12px;font-size:.8em;max-width:85%;line-height:1.5;">'
-                            f'{msg["content"]}</div></div>'
+                            f'<div style="display:flex;justify-content:flex-start;margin-bottom:7px;">'
+                            f'<div style="background:{bubble_bg};border:1px solid {bubble_border};'
+                            f'color:#f3e8ff;border-radius:14px 14px 14px 2px;'
+                            f'padding:8px 13px;font-size:.8em;max-width:88%;line-height:1.6;">'
+                            f'{bubble_label}{_fmt_bubble(msg["content"])}</div></div>'
                         )
                 st.markdown(
                     f'<div style="background:#1a0a2e;border:1px solid #3d1a72;border-radius:12px;'
-                    f'padding:10px;margin-bottom:8px;max-height:220px;overflow-y:auto;">'
+                    f'padding:10px;margin-bottom:8px;max-height:280px;overflow-y:auto;">'
                     f'{bubbles}</div>',
                     unsafe_allow_html=True,
                 )
 
-            # Input row
-            chat_col_in, chat_col_btn = st.columns([0.78, 0.22])
+            # ── build shared context payload ──────────────────────────────────
+            def _chat_context():
+                return {
+                    "logic":        st.session_state.get("logic_input", ""),
+                    "code":         st.session_state.get("code_input",  ""),
+                    "notes":        st.session_state.get("notes_input", ""),
+                    "gap_analysis": st.session_state.get("gap_input",   ""),
+                    "accuracy":     q.get("accuracy"),
+                }
+
+            # ── input row ─────────────────────────────────────────────────────
+            chat_col_in, chat_col_btn = st.columns([0.76, 0.24])
             with chat_col_in:
                 user_question = st.text_input(
                     "chat_q", key=f"chat_input_{q['id']}",
                     label_visibility="collapsed",
-                    placeholder="Ask a hint question… e.g. which data structure?"
+                    placeholder="Ask anything… e.g. which data structure? why O(n log n)?"
                 )
             with chat_col_btn:
                 ask_clicked = st.button("Ask", key=f"chat_ask_{q['id']}", use_container_width=True)
 
+            var_clicked = st.button(
+                "🔀 Get 3 Variations", key=f"chat_var_{q['id']}",
+                use_container_width=True,
+                help="Ask the AI to generate 3 related problems that practise the same pattern",
+            )
+
+            # ── send regular question ─────────────────────────────────────────
             if ask_clicked and user_question.strip():
-                current_logic = st.session_state.get("logic_input", "")
-                current_code  = st.session_state.get("code_input", "")
+                history_snapshot = list(chat_msgs)   # capture before appending
                 chat_msgs.append({"role": "user", "content": user_question.strip()})
                 try:
                     resp = requests.post(
                         f"{API_URL}/questions/{q['id']}/chat",
-                        json={"message": user_question.strip(),
-                              "context": {"logic": current_logic, "code": current_code}},
+                        json={
+                            "message":  user_question.strip(),
+                            "context":  _chat_context(),
+                            "history":  history_snapshot,
+                            "generate_variations": False,
+                        },
                         headers=auth_headers(),
-                        timeout=15,
+                        timeout=20,
                     )
-                    reply = resp.json().get("reply", "Sorry, no response.") if resp.status_code == 200 else "AI unavailable."
+                    data  = resp.json() if resp.status_code == 200 else {}
+                    reply = data.get("reply", "AI unavailable.")
                 except Exception:
                     reply = "Could not reach AI. Check your connection."
-                chat_msgs.append({"role": "assistant", "content": reply})
+                chat_msgs.append({"role": "assistant", "content": reply, "is_variation": False})
+                st.rerun()
+
+            # ── send variations request ───────────────────────────────────────
+            if var_clicked:
+                label = f"Give me 3 variations of «{q['title']}»"
+                history_snapshot = list(chat_msgs)
+                chat_msgs.append({"role": "user", "content": label})
+                try:
+                    resp = requests.post(
+                        f"{API_URL}/questions/{q['id']}/chat",
+                        json={
+                            "message":  label,
+                            "context":  _chat_context(),
+                            "history":  history_snapshot,
+                            "generate_variations": True,
+                        },
+                        headers=auth_headers(),
+                        timeout=30,
+                    )
+                    data  = resp.json() if resp.status_code == 200 else {}
+                    reply = data.get("reply", "AI unavailable.")
+                except Exception:
+                    reply = "Could not reach AI. Check your connection."
+                chat_msgs.append({"role": "assistant", "content": reply, "is_variation": True})
                 st.rerun()
 
             # ── AI Analysis Results ───────────────────────────────────────────

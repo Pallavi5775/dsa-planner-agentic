@@ -580,45 +580,96 @@ async def _upsert_questions(db: AsyncSession, questions: list) -> int:
     return added
 
 
-async def hint_chat(db: AsyncSession, qid: int, message: str, context: dict) -> dict:
+async def hint_chat(
+    db: AsyncSession,
+    qid: int,
+    message: str,
+    context: dict,
+    history: list | None = None,
+    generate_variations: bool = False,
+) -> dict:
     result = await db.execute(select(Question).where(Question.id == qid))
     q = result.scalar_one_or_none()
     if q is None:
         raise HTTPException(status_code=404, detail="Question not found")
 
-    user_logic = (context.get("logic") or "").strip()
-    user_code  = (context.get("code")  or "").strip()
+    user_logic    = (context.get("logic")        or "").strip()
+    user_code     = (context.get("code")         or "").strip()
+    user_notes    = (context.get("notes")        or "").strip()
+    user_gap      = (context.get("gap_analysis") or "").strip()
+    accuracy      = context.get("accuracy")
+    hint_text     = q.hint or ""
 
-    system_prompt = (
-        f"You are a Socratic DSA tutor helping a student practice '{q.title}' "
-        f"(Pattern: {q.pattern}, Difficulty: {q.difficulty or 'Medium'}).\n\n"
-        f"Student's current approach:\n{user_logic or '(not written yet)'}\n\n"
-        f"Student's current code:\n{user_code or '(not written yet)'}\n\n"
-        "Rules you MUST follow:\n"
-        "- Reply in AT MOST 2 short sentences.\n"
-        "- NEVER reveal the full algorithm or complete solution.\n"
-        "- Guide with a probing question or a tiny directional nudge.\n"
-        "- If the student is on the right track, confirm briefly and push one step further.\n"
-        "- Be warm and encouraging, but stay concise."
-    )
+    if generate_variations:
+        system_prompt = (
+            f"You are an expert DSA problem designer.\n"
+            f"The student is practising: '{q.title}' (Pattern: {q.pattern}, Difficulty: {q.difficulty or 'Medium'}).\n\n"
+            "Generate exactly 3 variations of this problem. Each variation must:\n"
+            "- Test the same core pattern and algorithm family\n"
+            "- Change one meaningful dimension: constraint, data structure, input shape, or output goal\n"
+            "- Be concise and interview-realistic\n\n"
+            "Format exactly like this:\n"
+            "**Variation 1: [Short Title]**\n"
+            "[2-3 sentence problem statement]\n"
+            "🔑 Twist: [one sentence — what differs from the original]\n\n"
+            "**Variation 2: [Short Title]**\n"
+            "...\n\n"
+            "**Variation 3: [Short Title]**\n"
+            "..."
+        )
+        message = f"Generate 3 variations of '{q.title}'."
+        max_tokens, temperature = 500, 0.85
+    else:
+        context_lines = []
+        if user_logic:
+            context_lines.append(f"Current approach: {user_logic}")
+        if user_code:
+            context_lines.append(f"Current code:\n{user_code}")
+        if user_notes:
+            context_lines.append(f"Student's notes: {user_notes}")
+        if user_gap:
+            context_lines.append(f"Self-identified gaps: {user_gap}")
+        if accuracy is not None:
+            context_lines.append(f"Accuracy so far: {accuracy}%")
+        if hint_text:
+            context_lines.append(f"[Hint the student may have seen: {hint_text}]")
+
+        system_prompt = (
+            f"You are a Socratic DSA tutor. The student is solving:\n"
+            f"Problem: {q.title}\n"
+            f"Pattern: {q.pattern} | Difficulty: {q.difficulty or 'Medium'}\n"
+            + ("\n" + "\n".join(context_lines) if context_lines else "")
+            + "\n\nRules:\n"
+            "- Reply in AT MOST 2 short sentences.\n"
+            "- NEVER give away the algorithm or solution.\n"
+            "- Give a Socratic nudge or probing question.\n"
+            "- If on the right track, confirm briefly and push one step further.\n"
+            "- Be encouraging but concise."
+        )
+        max_tokens, temperature = 150, 0.65
+
+    # Build messages: system + history + current
+    messages = [{"role": "system", "content": system_prompt}]
+    for msg in (history or []):
+        role = msg.get("role", "user")
+        if role in ("user", "assistant"):
+            messages.append({"role": role, "content": msg.get("content", "")})
+    messages.append({"role": "user", "content": message})
 
     try:
         import openai
         client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user",   "content": message},
-            ],
-            max_tokens=120,
-            temperature=0.7,
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
         )
         reply = response.choices[0].message.content.strip()
     except Exception as e:
         reply = f"(AI unavailable: {e})"
 
-    return {"reply": reply}
+    return {"reply": reply, "is_variation": generate_variations}
 
 
 async def get_all_pattern_notes(db: AsyncSession, user_id: int) -> dict:
