@@ -63,6 +63,13 @@ def auth_headers():
 
 BACKEND_URL = "http://localhost:8000"
 
+# ── Code editor (streamlit-ace) — graceful fallback to styled textarea ────────
+try:
+    from streamlit_ace import st_ace
+    _ACE_AVAILABLE = True
+except ImportError:
+    _ACE_AVAILABLE = False
+
 
 def show_auth_page():
     """Full-screen OAuth login page."""
@@ -214,6 +221,32 @@ html, body, [data-testid="stAppViewContainer"] {
     background: linear-gradient(135deg,#7c3aed,#db2777) !important;
     border: none !important; color: #fff !important;
     box-shadow: 0 2px 8px rgba(124,58,237,.35) !important;
+}
+
+/* ── Code editor fallback textarea ── */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+textarea[data-testid="stTextArea"],
+.code-editor-area textarea {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
+    font-size: 13px !important;
+    background: #1e1e1e !important;
+    color: #d4d4d4 !important;
+    border: 1.5px solid #3c3c3c !important;
+    border-radius: 8px !important;
+    line-height: 1.65 !important;
+    caret-color: #c084fc !important;
+}
+textarea[data-testid="stTextArea"]:focus,
+.code-editor-area textarea:focus {
+    border-color: #7c3aed !important;
+    box-shadow: 0 0 0 2px rgba(124,58,237,.3) !important;
+    outline: none !important;
+}
+
+/* Ace editor container */
+.ace-editor-wrap .ace_editor {
+    border-radius: 8px !important;
+    font-family: 'JetBrains Mono', monospace !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -2686,6 +2719,66 @@ if st.session_state.active_qid:
                     unsafe_allow_html=True
                 )
 
+            # ── Problem Statement ─────────────────────────────────────────────
+            desc_key = f"desc_{q['id']}"
+            with st.expander("📋 Problem Statement & Examples", expanded=not bool(st.session_state.get(desc_key))):
+                existing_desc = q.get("description") or st.session_state.get(desc_key)
+                if existing_desc:
+                    # Render sections with coloured headers
+                    def _render_description(text):
+                        lines = text.strip().splitlines()
+                        out = []
+                        for line in lines:
+                            stripped = line.strip()
+                            if stripped in ("PROBLEM", "EXAMPLE 1", "EXAMPLE 2", "CONSTRAINTS"):
+                                out.append(
+                                    f'<div style="font-size:.6em;font-weight:700;letter-spacing:1px;'
+                                    f'text-transform:uppercase;color:#7c3aed;margin:12px 0 4px;">{stripped}</div>'
+                                )
+                            elif stripped.startswith(("Input:", "Output:", "Explanation:")):
+                                label, _, rest = stripped.partition(":")
+                                out.append(
+                                    f'<div style="font-size:.83em;line-height:1.6;">'
+                                    f'<b style="color:#a78bfa;">{label}:</b>'
+                                    f'<code style="background:#2d1457;color:#e9d5ff;padding:1px 6px;'
+                                    f'border-radius:4px;font-size:.95em;">{rest.strip()}</code></div>'
+                                )
+                            elif stripped.startswith("•"):
+                                out.append(
+                                    f'<div style="font-size:.83em;color:#374151;line-height:1.7;padding-left:4px;">{stripped}</div>'
+                                )
+                            elif stripped:
+                                out.append(f'<div style="font-size:.85em;color:#1e1b4b;line-height:1.7;">{stripped}</div>')
+                        return "".join(out)
+
+                    st.markdown(
+                        f'<div style="background:#fff;border:1.5px solid #ede9fe;border-radius:12px;'
+                        f'padding:14px 18px;">{_render_description(existing_desc)}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.session_state[desc_key] = existing_desc
+                else:
+                    gen_col, _ = st.columns([0.4, 0.6])
+                    if gen_col.button("✨ Generate Description", key=f"gen_desc_{q['id']}", type="primary", use_container_width=True):
+                        with st.spinner("Generating problem statement…"):
+                            try:
+                                r = requests.post(
+                                    f"{API_URL}/questions/{q['id']}/description",
+                                    headers=auth_headers(), timeout=25,
+                                )
+                                if r.status_code == 200:
+                                    st.session_state[desc_key] = r.json().get("description", "")
+                                    st.rerun()
+                                else:
+                                    st.error("Generation failed.")
+                            except Exception as e:
+                                st.error(f"Error: {e}")
+                    st.markdown(
+                        '<p style="font-size:.8em;color:#a78bfa;font-style:italic;">'
+                        'Click to auto-generate a full problem description with examples.</p>',
+                        unsafe_allow_html=True,
+                    )
+
             # ── Hint section ─────────────────────────────────────────────────
             hint_key = f"hint_used_{q['id']}"
             if not st.session_state.get(hint_key):
@@ -2738,8 +2831,35 @@ if st.session_state.active_qid:
                 new_notes = st.text_area("notes", value=q.get('notes') or '', key="notes_input", height=140, label_visibility="collapsed", placeholder="Key insight, pattern trick, edge case to remember...")
 
             with col_right:
-                st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">💻 Code</p>', unsafe_allow_html=True)
-                new_code = st.text_area("code", value=q.get('code',''), key="code_input", height=220, label_visibility="collapsed", placeholder="Paste or type your solution here...")
+                st.markdown(
+                    '<p style="font-size:.62em;font-weight:700;letter-spacing:1px;'
+                    'text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">'
+                    '💻 Code &nbsp;<span style="font-weight:400;color:#9ca3af;font-size:.85em;text-transform:none;">'
+                    '(Python)</span></p>',
+                    unsafe_allow_html=True,
+                )
+                _init_code = q.get('code') or ''
+                if _ACE_AVAILABLE:
+                    new_code = st_ace(
+                        value=_init_code,
+                        language="python",
+                        theme="monokai",
+                        key=f"code_ace_{q['id']}",
+                        font_size=13,
+                        tab_size=4,
+                        show_gutter=True,
+                        show_print_margin=False,
+                        wrap=False,
+                        auto_update=True,
+                        height=280,
+                        placeholder="# Write your solution here…",
+                    )
+                else:
+                    new_code = st.text_area(
+                        "code", value=_init_code, key="code_input",
+                        height=280, label_visibility="collapsed",
+                        placeholder="# Write your solution here…",
+                    )
 
                 st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">🔍 My Gap Analysis</p>', unsafe_allow_html=True)
                 new_gap = st.text_area("gap", value=q.get('my_gap_analysis') or '', key="gap_input", height=140, label_visibility="collapsed", placeholder="Where did my thinking break down? What would I do differently?")
@@ -2827,9 +2947,11 @@ if st.session_state.active_qid:
 
             # ── build shared context payload ──────────────────────────────────
             def _chat_context():
+                # Ace editor stores value in new_code (local); fall back to session_state key
+                code_val = new_code if 'new_code' in dir() else st.session_state.get("code_input", "")
                 return {
                     "logic":        st.session_state.get("logic_input", ""),
-                    "code":         st.session_state.get("code_input",  ""),
+                    "code":         code_val,
                     "notes":        st.session_state.get("notes_input", ""),
                     "gap_analysis": st.session_state.get("gap_input",   ""),
                     "accuracy":     q.get("accuracy"),

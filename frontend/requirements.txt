@@ -6,4 +6,5 @@ requests
 streamlit_autorefresh
 openai
 pandas
+streamlit-ace
 

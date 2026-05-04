@@ -5,6 +5,10 @@ ALTER TABLE dsa.questions
 ALTER TABLE dsa.practice_logs
     ADD COLUMN IF NOT EXISTS hint_used BOOLEAN NOT NULL DEFAULT FALSE;
 
+-- Question description (AI-generated, stored per question)
+ALTER TABLE dsa.questions
+    ADD COLUMN IF NOT EXISTS description TEXT;
+
 -- Pattern notes (per-user, per-pattern study notes + memory tricks)
 CREATE TABLE IF NOT EXISTS dsa.user_pattern_notes (
     id                 SERIAL PRIMARY KEY,

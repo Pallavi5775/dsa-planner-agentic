@@ -57,6 +57,7 @@ def _question_to_dict(q: Question, progress: UserQuestionProgress | None, user_l
         "category": q.category,
         "difficulty": q.difficulty,
         "hint": q.hint,
+        "description": q.description,
         **d,
         "total_time_spent": sum(log.time_taken for log in user_logs) // 60,
         "logs": [
@@ -578,6 +579,56 @@ async def _upsert_questions(db: AsyncSession, questions: list) -> int:
     if added:
         await db.commit()
     return added
+
+
+async def generate_question_description(db: AsyncSession, qid: int) -> dict:
+    result = await db.execute(select(Question).where(Question.id == qid))
+    q = result.scalar_one_or_none()
+    if q is None:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    if q.description:
+        return {"description": q.description}
+
+    prompt = (
+        f"Generate a complete, concise problem description for the DSA problem: \"{q.title}\".\n"
+        f"Pattern: {q.pattern} | Difficulty: {q.difficulty or 'Medium'}\n\n"
+        "Format EXACTLY like this (use plain text, no markdown headers):\n\n"
+        "PROBLEM\n"
+        "[2-3 sentence clear problem statement. Define input and output precisely.]\n\n"
+        "EXAMPLE 1\n"
+        "Input: [concrete input]\n"
+        "Output: [expected output]\n"
+        "Explanation: [1-2 sentences why]\n\n"
+        "EXAMPLE 2\n"
+        "Input: [different concrete input — edge case or variation]\n"
+        "Output: [expected output]\n"
+        "Explanation: [1 sentence]\n\n"
+        "CONSTRAINTS\n"
+        "• [constraint 1, e.g. 1 <= n <= 10^5]\n"
+        "• [constraint 2]\n"
+        "• [constraint 3]\n\n"
+        "Do not include hints, solution approaches, or code. Keep it concise and realistic."
+    )
+
+    try:
+        import openai
+        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a technical problem writer. Output only the problem description, no commentary."},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=500,
+            temperature=0.3,
+        )
+        description = response.choices[0].message.content.strip()
+        q.description = description
+        await db.commit()
+        return {"description": description}
+    except Exception as e:
+        return {"description": f"(Could not generate description: {e})"}
 
 
 async def hint_chat(

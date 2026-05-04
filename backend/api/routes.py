@@ -192,6 +192,15 @@ async def update_last_log(
     return await crud.update_last_log(db, qid, user_id, logic, code, notes, my_gap_analysis)
 
 
+@router.post("/questions/{qid}/description")
+async def get_or_generate_description(
+    qid: int,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    return await crud.generate_question_description(db, qid)
+
+
 @router.post("/questions/{qid}/validate")
 async def validate(
     qid: int,

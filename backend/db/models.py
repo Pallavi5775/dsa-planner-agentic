@@ -34,6 +34,7 @@ class Question(Base):
     category = Column(String, default="Mixed")
     difficulty = Column(String, default="Medium")
     hint = Column(String, nullable=True)
+    description = Column(String, nullable=True)
 
     logs = relationship("PracticeLog", back_populates="question", cascade="all, delete")
     progress = relationship("UserQuestionProgress", back_populates="question", cascade="all, delete")
