@@ -578,3 +578,44 @@ async def _upsert_questions(db: AsyncSession, questions: list) -> int:
     if added:
         await db.commit()
     return added
+
+
+async def hint_chat(db: AsyncSession, qid: int, message: str, context: dict) -> dict:
+    result = await db.execute(select(Question).where(Question.id == qid))
+    q = result.scalar_one_or_none()
+    if q is None:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    user_logic = (context.get("logic") or "").strip()
+    user_code  = (context.get("code")  or "").strip()
+
+    system_prompt = (
+        f"You are a Socratic DSA tutor helping a student practice '{q.title}' "
+        f"(Pattern: {q.pattern}, Difficulty: {q.difficulty or 'Medium'}).\n\n"
+        f"Student's current approach:\n{user_logic or '(not written yet)'}\n\n"
+        f"Student's current code:\n{user_code or '(not written yet)'}\n\n"
+        "Rules you MUST follow:\n"
+        "- Reply in AT MOST 2 short sentences.\n"
+        "- NEVER reveal the full algorithm or complete solution.\n"
+        "- Guide with a probing question or a tiny directional nudge.\n"
+        "- If the student is on the right track, confirm briefly and push one step further.\n"
+        "- Be warm and encouraging, but stay concise."
+    )
+
+    try:
+        import openai
+        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": message},
+            ],
+            max_tokens=120,
+            temperature=0.7,
+        )
+        reply = response.choices[0].message.content.strip()
+    except Exception as e:
+        reply = f"(AI unavailable: {e})"
+
+    return {"reply": reply}

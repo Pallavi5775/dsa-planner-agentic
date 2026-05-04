@@ -201,6 +201,16 @@ async def validate(
     return await crud.validate_question(db, qid, user_id)
 
 
+@router.post("/questions/{qid}/chat")
+async def hint_chat(
+    qid: int,
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    return await crud.hint_chat(db, qid, body.get("message", ""), body.get("context", {}))
+
+
 @router.post("/upload_md")
 async def upload_md(
     file: UploadFile = File(...),

@@ -1558,6 +1558,77 @@ if st.session_state.active_qid:
                 st.session_state.pop('ai_pending_qid', None)
                 st.session_state.pop('ai_pending_since', None)
                 st.session_state.pop(f"hint_used_{q['id']}", None)
+                st.session_state.pop(f"chat_{q['id']}", None)
+                st.rerun()
+
+            # ── AI Hint Chat ──────────────────────────────────────────────────
+            st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+            st.markdown(
+                '<div style="font-size:.6em;font-weight:700;letter-spacing:1px;'
+                'text-transform:uppercase;color:#a78bfa;margin-bottom:6px;">'
+                '🤖 Ask AI Tutor</div>',
+                unsafe_allow_html=True,
+            )
+
+            chat_key = f"chat_{q['id']}"
+            if chat_key not in st.session_state:
+                st.session_state[chat_key] = []
+
+            chat_msgs = st.session_state[chat_key]
+
+            # Render conversation history
+            if chat_msgs:
+                bubbles = ""
+                for msg in chat_msgs[-6:]:
+                    if msg["role"] == "user":
+                        bubbles += (
+                            f'<div style="display:flex;justify-content:flex-end;margin-bottom:6px;">'
+                            f'<div style="background:#4c1d95;color:#e9d5ff;border-radius:14px 14px 2px 14px;'
+                            f'padding:7px 12px;font-size:.8em;max-width:85%;line-height:1.5;">'
+                            f'{msg["content"]}</div></div>'
+                        )
+                    else:
+                        bubbles += (
+                            f'<div style="display:flex;justify-content:flex-start;margin-bottom:6px;">'
+                            f'<div style="background:#2a1050;border:1px solid #5b21b6;color:#f3e8ff;'
+                            f'border-radius:14px 14px 14px 2px;'
+                            f'padding:7px 12px;font-size:.8em;max-width:85%;line-height:1.5;">'
+                            f'{msg["content"]}</div></div>'
+                        )
+                st.markdown(
+                    f'<div style="background:#1a0a2e;border:1px solid #3d1a72;border-radius:12px;'
+                    f'padding:10px;margin-bottom:8px;max-height:220px;overflow-y:auto;">'
+                    f'{bubbles}</div>',
+                    unsafe_allow_html=True,
+                )
+
+            # Input row
+            chat_col_in, chat_col_btn = st.columns([0.78, 0.22])
+            with chat_col_in:
+                user_question = st.text_input(
+                    "chat_q", key=f"chat_input_{q['id']}",
+                    label_visibility="collapsed",
+                    placeholder="Ask a hint question… e.g. which data structure?"
+                )
+            with chat_col_btn:
+                ask_clicked = st.button("Ask", key=f"chat_ask_{q['id']}", use_container_width=True)
+
+            if ask_clicked and user_question.strip():
+                current_logic = st.session_state.get("logic_input", "")
+                current_code  = st.session_state.get("code_input", "")
+                chat_msgs.append({"role": "user", "content": user_question.strip()})
+                try:
+                    resp = requests.post(
+                        f"{API_URL}/questions/{q['id']}/chat",
+                        json={"message": user_question.strip(),
+                              "context": {"logic": current_logic, "code": current_code}},
+                        headers=auth_headers(),
+                        timeout=15,
+                    )
+                    reply = resp.json().get("reply", "Sorry, no response.") if resp.status_code == 200 else "AI unavailable."
+                except Exception:
+                    reply = "Could not reach AI. Check your connection."
+                chat_msgs.append({"role": "assistant", "content": reply})
                 st.rerun()
 
             # ── AI Analysis Results ───────────────────────────────────────────
