@@ -21,6 +21,7 @@ class User(Base):
 
     progress = relationship("UserQuestionProgress", back_populates="user", cascade="all, delete")
     logs = relationship("PracticeLog", back_populates="user", cascade="all, delete")
+    pattern_notes = relationship("UserPatternNote", back_populates="user", cascade="all, delete")
 
 
 class Question(Base):
@@ -79,3 +80,19 @@ class PracticeLog(Base):
 
     question = relationship("Question", back_populates="logs")
     user = relationship("User", back_populates="logs")
+
+
+class UserPatternNote(Base):
+    __tablename__ = "user_pattern_notes"
+    __table_args__ = (
+        UniqueConstraint("user_id", "pattern", name="uq_pattern_note_user"),
+        {"schema": "dsa"},
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("dsa.users.id"), nullable=False)
+    pattern = Column(String, nullable=False)
+    notes = Column(String, default="")
+    memory_techniques = Column(String, default="")
+
+    user = relationship("User", back_populates="pattern_notes")

@@ -295,6 +295,42 @@ async def github_history(
     return {"connected": True, "sessions": sessions}
 
 
+@router.get("/pattern-notes")
+async def get_pattern_notes(
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    return await crud.get_all_pattern_notes(db, user_id)
+
+
+@router.patch("/pattern-notes")
+async def update_pattern_notes(
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    return await crud.update_pattern_note(
+        db, user_id,
+        pattern=body.get("pattern", ""),
+        notes=body.get("notes"),
+        memory_techniques=body.get("memory_techniques"),
+    )
+
+
+@router.post("/pattern-chat")
+async def pattern_chat_endpoint(
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    return await crud.pattern_chat(
+        db,
+        pattern=body.get("pattern", ""),
+        message=body.get("message", ""),
+        generate_memo=body.get("generate_memo", False),
+    )
+
+
 @router.post("/sync_questions")
 async def sync_questions(
     db: AsyncSession = Depends(get_db),

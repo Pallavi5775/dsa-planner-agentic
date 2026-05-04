@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 
-from backend.db.models import Question, PracticeLog, UserQuestionProgress, User
+from backend.db.models import Question, PracticeLog, UserQuestionProgress, User, UserPatternNote
 from backend.core.utils import (
     get_spaced_repetition_values,
     calculate_accuracy,
@@ -613,6 +613,78 @@ async def hint_chat(db: AsyncSession, qid: int, message: str, context: dict) -> 
             ],
             max_tokens=120,
             temperature=0.7,
+        )
+        reply = response.choices[0].message.content.strip()
+    except Exception as e:
+        reply = f"(AI unavailable: {e})"
+
+    return {"reply": reply}
+
+
+async def get_all_pattern_notes(db: AsyncSession, user_id: int) -> dict:
+    rows = (await db.execute(
+        select(UserPatternNote).where(UserPatternNote.user_id == user_id)
+    )).scalars().all()
+    return {
+        row.pattern: {"notes": row.notes or "", "memory_techniques": row.memory_techniques or ""}
+        for row in rows
+    }
+
+
+async def update_pattern_note(
+    db: AsyncSession, user_id: int, pattern: str,
+    notes: str | None, memory_techniques: str | None,
+) -> dict:
+    row = (await db.execute(
+        select(UserPatternNote).where(
+            UserPatternNote.user_id == user_id,
+            UserPatternNote.pattern == pattern,
+        )
+    )).scalar_one_or_none()
+
+    if row is None:
+        row = UserPatternNote(user_id=user_id, pattern=pattern)
+        db.add(row)
+
+    if notes is not None:
+        row.notes = notes
+    if memory_techniques is not None:
+        row.memory_techniques = memory_techniques
+
+    await db.commit()
+    return {"notes": row.notes or "", "memory_techniques": row.memory_techniques or ""}
+
+
+async def pattern_chat(db: AsyncSession, pattern: str, message: str, generate_memo: bool = False) -> dict:
+    if generate_memo:
+        system_prompt = (
+            f"You are a creative DSA tutor. Generate exactly 4 memory techniques for the '{pattern}' pattern.\n"
+            "Each technique must be a different type: acronym/mnemonic, visual analogy, short story/metaphor, "
+            "or rhyme. Format as a numbered list (1. 2. 3. 4.). Keep each item to 1-2 sentences. "
+            "Make them memorable and fun — students should be able to recall the core idea of the pattern from each one."
+        )
+        message = f"Generate memory tricks for {pattern}."
+    else:
+        system_prompt = (
+            f"You are an expert DSA tutor teaching the '{pattern}' pattern.\n"
+            "Rules:\n"
+            "- Answer clearly and concisely — 2 to 4 sentences max.\n"
+            "- Use a short code example only if it directly answers the question.\n"
+            "- Do NOT pad the answer. If the question is simple, a single sentence is fine.\n"
+            "- Focus only on the DSA concept being asked about."
+        )
+
+    try:
+        import openai
+        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user",   "content": message},
+            ],
+            max_tokens=300 if generate_memo else 180,
+            temperature=0.8 if generate_memo else 0.5,
         )
         reply = response.choices[0].message.content.strip()
     except Exception as e:

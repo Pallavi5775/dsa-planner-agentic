@@ -1030,6 +1030,15 @@ with tabs[3]:
 # ══════════════════════════════════════════════════════════════════════════════
 with tabs[PATTERNS_IDX]:
 
+    # ── load saved pattern notes once per session ─────────────────────────────
+    if "pattern_notes_loaded" not in st.session_state:
+        try:
+            _pn_r = requests.get(f"{API_URL}/pattern-notes", headers=auth_headers(), timeout=6)
+            st.session_state.pattern_notes = _pn_r.json() if _pn_r.status_code == 200 else {}
+        except Exception:
+            st.session_state.pattern_notes = {}
+        st.session_state.pattern_notes_loaded = True
+
     # ── helpers ───────────────────────────────────────────────────────────────
     def _sec(title):
         st.markdown(
@@ -1077,6 +1086,135 @@ with tabs[PATTERNS_IDX]:
                     f'<p style="font-size:.75em;color:#6b7280;margin-top:6px;">⏱ {complexity}</p>',
                     unsafe_allow_html=True,
                 )
+
+    def _pattern_footer(pattern_name):
+        saved = st.session_state.get("pattern_notes", {}).get(pattern_name, {})
+        saved_memo  = saved.get("memory_techniques", "")
+        saved_notes = saved.get("notes", "")
+
+        st.markdown("<hr style='border:none;border-top:1px solid #ede9fe;margin:20px 0 4px;'>", unsafe_allow_html=True)
+
+        # ── Memory Tricks ─────────────────────────────────────────────────────
+        _sec("🧠 Memory Tricks")
+
+        if saved_memo:
+            st.markdown(
+                f'<div style="background:#fdf4ff;border:1.5px solid #e9d5ff;border-radius:12px;'
+                f'padding:12px 16px;font-size:.86em;color:#3b0764;line-height:1.8;'
+                f'white-space:pre-wrap;">{saved_memo}</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<p style="font-size:.82em;color:#a78bfa;font-style:italic;">No memory tricks saved yet — generate some below.</p>',
+                unsafe_allow_html=True,
+            )
+
+        gen_col, _ = st.columns([0.35, 0.65])
+        if gen_col.button("✨ Generate Memory Tricks", key=f"gen_memo_{pattern_name}", use_container_width=True):
+            with st.spinner("Generating..."):
+                try:
+                    resp = requests.post(
+                        f"{API_URL}/pattern-chat",
+                        json={"pattern": pattern_name, "message": "", "generate_memo": True},
+                        headers=auth_headers(), timeout=20,
+                    )
+                    memo = resp.json().get("reply", "") if resp.status_code == 200 else "AI unavailable."
+                    requests.patch(
+                        f"{API_URL}/pattern-notes",
+                        json={"pattern": pattern_name, "memory_techniques": memo},
+                        headers=auth_headers(), timeout=8,
+                    )
+                    pn = st.session_state.get("pattern_notes", {})
+                    pn.setdefault(pattern_name, {})["memory_techniques"] = memo
+                    st.session_state.pattern_notes = pn
+                    st.session_state.pop("pattern_notes_loaded", None)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+        # ── My Notes ──────────────────────────────────────────────────────────
+        _sec("📝 My Notes")
+        new_notes = st.text_area(
+            f"my_notes_{pattern_name}", value=saved_notes,
+            key=f"pnotes_{pattern_name}", height=130,
+            label_visibility="collapsed",
+            placeholder=f"Write your own observations, tricks, or reminders for the {pattern_name} pattern…",
+        )
+        save_col, _ = st.columns([0.22, 0.78])
+        if save_col.button("💾 Save Notes", key=f"save_pnotes_{pattern_name}", use_container_width=True):
+            try:
+                requests.patch(
+                    f"{API_URL}/pattern-notes",
+                    json={"pattern": pattern_name, "notes": new_notes},
+                    headers=auth_headers(), timeout=8,
+                )
+                pn = st.session_state.get("pattern_notes", {})
+                pn.setdefault(pattern_name, {})["notes"] = new_notes
+                st.session_state.pattern_notes = pn
+                st.success("Notes saved!")
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+        # ── AI Chat ───────────────────────────────────────────────────────────
+        _sec("🤖 Ask AI Tutor")
+        chat_key = f"pchat_{pattern_name}"
+        if chat_key not in st.session_state:
+            st.session_state[chat_key] = []
+        chat_msgs = st.session_state[chat_key]
+
+        if chat_msgs:
+            bubbles = ""
+            for msg in chat_msgs[-8:]:
+                if msg["role"] == "user":
+                    bubbles += (
+                        f'<div style="display:flex;justify-content:flex-end;margin-bottom:6px;">'
+                        f'<div style="background:#4c1d95;color:#e9d5ff;border-radius:14px 14px 2px 14px;'
+                        f'padding:7px 12px;font-size:.82em;max-width:80%;line-height:1.5;">'
+                        f'{msg["content"]}</div></div>'
+                    )
+                else:
+                    bubbles += (
+                        f'<div style="display:flex;justify-content:flex-start;margin-bottom:6px;">'
+                        f'<div style="background:#f5f3ff;border:1px solid #c4b5fd;color:#1e1b4b;'
+                        f'border-radius:14px 14px 14px 2px;'
+                        f'padding:7px 12px;font-size:.82em;max-width:80%;line-height:1.5;white-space:pre-wrap;">'
+                        f'{msg["content"]}</div></div>'
+                    )
+            st.markdown(
+                f'<div style="background:#fafafa;border:1.5px solid #ede9fe;border-radius:12px;'
+                f'padding:12px;margin-bottom:8px;max-height:260px;overflow-y:auto;">'
+                f'{bubbles}</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f'<p style="font-size:.8em;color:#a78bfa;font-style:italic;margin-bottom:6px;">'
+                f'Ask anything about the {pattern_name} pattern — concepts, edge cases, when to use it…</p>',
+                unsafe_allow_html=True,
+            )
+
+        ci_col, cb_col = st.columns([0.78, 0.22])
+        user_q = ci_col.text_input(
+            "pchat_in", key=f"pchat_input_{pattern_name}",
+            label_visibility="collapsed",
+            placeholder="e.g. When should I prefer BFS over DFS?",
+        )
+        ask = cb_col.button("Ask", key=f"pchat_ask_{pattern_name}", use_container_width=True)
+
+        if ask and user_q.strip():
+            chat_msgs.append({"role": "user", "content": user_q.strip()})
+            try:
+                resp = requests.post(
+                    f"{API_URL}/pattern-chat",
+                    json={"pattern": pattern_name, "message": user_q.strip(), "generate_memo": False},
+                    headers=auth_headers(), timeout=20,
+                )
+                reply = resp.json().get("reply", "Sorry, no response.") if resp.status_code == 200 else "AI unavailable."
+            except Exception:
+                reply = "Could not reach AI. Check your connection."
+            chat_msgs.append({"role": "assistant", "content": reply})
+            st.rerun()
 
     # ── pattern tabs ─────────────────────────────────────────────────────────
     p_tabs = st.tabs(["🔢 Array", "🧮 DP", "🕸 Graphs", "💰 Greedy", "⛰ Heap", "📚 Stack", "🔤 String"])
@@ -1259,6 +1397,7 @@ def kadane_with_indices(arr):
             "Prefix sum index shift: prefix[0]=0, so range sum is prefix[r+1]−prefix[l], not prefix[r]−prefix[l].",
             "Kadane with all negatives: initialise both <code>current</code> and <code>best</code> to arr[0], not 0.",
         ])
+        _pattern_footer("Array")
 
     # ═══════════════════════════════════════════════════════
     #  DYNAMIC PROGRAMMING
@@ -1399,6 +1538,7 @@ def lis_nlogn(arr):
             "0/1 knapsack iterating forward → same item counted multiple times.",
             "LCS confusion: diagonal move ONLY when characters match; left/up otherwise.",
         ])
+        _pattern_footer("Dynamic Programming")
 
     # ═══════════════════════════════════════════════════════
     #  GRAPHS
@@ -1595,6 +1735,7 @@ class UnionFind:
             "Topological sort on undirected graphs → always use directed graph formulation.",
             "DFS recursion depth: Python default is 1000; set <code>sys.setrecursionlimit()</code> or use iterative DFS.",
         ])
+        _pattern_footer("Graphs")
 
     # ═══════════════════════════════════════════════════════
     #  GREEDY
@@ -1702,6 +1843,7 @@ def min_cost_merge(stones):
             "Sorting by start time instead of finish time in activity selection — a classic mistake.",
             "Assuming greedy works without proof — always sketch the exchange argument.",
         ])
+        _pattern_footer("Greedy")
 
     # ═══════════════════════════════════════════════════════
     #  HEAP
@@ -1813,6 +1955,7 @@ class MedianFinder:
             "K-th largest ≠ K-th from top of a sorted array — double-check the definition.",
             "Sliding window max with a heap still includes stale elements — use a <code>deque</code> (monotonic queue) instead.",
         ])
+        _pattern_footer("Heap")
 
     # ═══════════════════════════════════════════════════════
     #  STACK
@@ -1933,6 +2076,7 @@ def calculate(s):
             "Forgetting the sentinel in histogram — some bars at the end never get popped without it.",
             "Parentheses: check <code>not stack</code> before <code>stack[-1]</code> to avoid IndexError on unmatched close brackets.",
         ])
+        _pattern_footer("Stack")
 
     # ═══════════════════════════════════════════════════════
     #  STRING
@@ -2088,6 +2232,7 @@ def kmp_search(text, pattern):
             "Sliding window on strings: remember to delete keys with count 0 from the frequency map, or comparisons will fail.",
             "KMP LPS build: on mismatch, set <code>length = lps[length-1]</code>, NOT <code>length = 0</code>.",
         ])
+        _pattern_footer("String")
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  TAB — PRACTICE JOURNAL  (GitHub-connected users only)
