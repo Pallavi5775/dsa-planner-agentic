@@ -402,18 +402,18 @@ Your task is to analyze a student's session and update the question metadata.
 ### INPUT DATA (Current Question Object):
 {json.dumps(question_dict, ensure_ascii=False)}
 
-### STUDENT'S SELF-REFLECTION (use these to calibrate accuracy):
+### STUDENT'S SELF-REFLECTION (for context only — do NOT use gap_analysis to affect accuracy):
 - **Notes (key insights the student wrote):** {p.notes or "(none)"}
-- **My Gap Analysis (student's own weakness assessment):** {p.my_gap_analysis or "(none)"}
+- **My Gap Analysis (student's own weakness assessment — informational only, does NOT affect accuracy score):** {p.my_gap_analysis or "(none)"}
 - **Hint used this session:** {"YES — the student viewed the hint before/during solving. Apply up to -15 points to accuracy to reflect reduced independence. Hint was: " + hint_text if hint_used_this_session else "No"}
 
 ### TASK 1: VALIDATION
-- If logic AND code AND notes AND my_gap_analysis are all empty or gibberish, mark `correct = false`.
+- If logic AND code AND notes are all empty or gibberish, mark `correct = false`.
 - If the student attempts a solution but uses the wrong strategy, mark `correct = false` but acknowledge the valid attempt.
 
 ### TASK 2: TECHNICAL ANALYSIS
+- Code Quality: Evaluate the student's code from the latest log — correctness, implementation clarity, edge case handling, and time/space complexity.
 - Strategy Matching: Compare the student's logic and code against the optimal strategy for the {q.pattern} pattern and problem {q.title}.
-- Self-Awareness Check: Does the student's `my_gap_analysis` correctly identify their own weakness? If yes, add up to +10 points to accuracy (self-awareness bonus).
 - Notes Quality: Do the `notes` capture the core insight of the pattern? If yes, add up to +5 points.
 - The "Why" Analysis:
       - If Correct: Explain why this approach leads to the correct solution and what makes it optimal.
@@ -421,7 +421,7 @@ Your task is to analyze a student's session and update the question metadata.
 - Complexity Check: Verify if the time complexity matches optimal O(n log n) or O(n).
 
 ### TASK 3: ASSESSMENT ONLY (backend handles all SRS scheduling)
-1. accuracy: 0-100. Base score from code/logic quality. Add bonuses. Cap at 100.
+1. accuracy: 0-100. Score is based ONLY on code quality (correctness, edge cases, complexity), logic clarity, and notes quality. gap_analysis MUST NOT influence this score. Add the notes bonus (+5 max). Cap at 100.
 2. correct: true if the approach and code are logically valid, false otherwise.
 3. revision_status: "Mastered" if accuracy > 90%, "Needs Work" if accuracy < 60%, "Pending" if gibberish.
 4. suggestions: A detailed 4-6 sentence analysis covering:
