@@ -530,12 +530,11 @@ _show_in_app_toasts()
 
 
 def _notification_bell():
-    """Render unread count badge and mark-all-read button."""
     notifs = _fetch_notifications()
     unread_count = sum(1 for n in notifs if not n.get("is_read"))
-    badge = f" ({unread_count})" if unread_count else ""
-    label = f"🔔{badge}"
-    if st.button(label, key="notif_bell_btn", help="Notifications", use_container_width=True):
+
+    label = f"🔔  {unread_count} new" if unread_count else "🔔  Inbox"
+    if st.button(label, key="notif_bell_btn", use_container_width=True):
         st.session_state.show_notif_panel = not st.session_state.get("show_notif_panel", False)
 
     if st.session_state.get("show_notif_panel"):
@@ -544,39 +543,64 @@ def _notification_bell():
 
 def _render_notification_panel(notifs: list):
     type_icons = {"revisions": "📚", "streak": "🔥", "mastery": "🏆", "info": "ℹ️"}
-    with st.container():
-        st.markdown(
-            '<div style="background:#1e0b38;border:1.5px solid #3d1a72;border-radius:14px;'
-            'padding:14px 16px;margin-top:4px;max-height:300px;overflow-y:auto;">',
-            unsafe_allow_html=True,
-        )
-        if not notifs:
-            st.markdown('<p style="color:#a78bfa;font-size:.85em;text-align:center;">No notifications yet.</p>', unsafe_allow_html=True)
-        else:
-            col_title, col_clear = st.columns([2, 1])
-            col_title.markdown('<span style="color:#f3e8ff;font-weight:700;font-size:.85em;">Notifications</span>', unsafe_allow_html=True)
-            if col_clear.button("Clear all", key="notif_clear_all", use_container_width=True):
-                try:
-                    requests.patch(f"{API_URL}/me/notifications/read-all", headers=auth_headers(), timeout=5)
-                    st.session_state.pop("notifs_cache", None)
-                    st.session_state.show_notif_panel = False
-                    st.rerun()
-                except Exception:
-                    pass
+    unread_count = sum(1 for n in notifs if not n.get("is_read"))
 
-            for n in notifs[:10]:
-                icon = type_icons.get(n.get("type", "info"), "🔔")
-                alpha = "1" if not n.get("is_read") else "0.5"
-                ts = n.get("created_at", "")[:16].replace("T", " ")
-                st.markdown(
-                    f'<div style="opacity:{alpha};padding:8px 0;'
-                    f'border-bottom:1px solid #2d1457;">'
-                    f'<span style="font-size:.8em;color:#e9d5ff;">{icon} {n["message"]}</span><br>'
-                    f'<span style="font-size:.65em;color:#6d28d9;">{ts} UTC</span>'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
-        st.markdown('</div>', unsafe_allow_html=True)
+    rows_html = ""
+    for n in notifs[:10]:
+        icon  = type_icons.get(n.get("type", "info"), "🔔")
+        unread = not n.get("is_read")
+        ts    = n.get("created_at", "")[:16].replace("T", " ")
+        dot   = (
+            '<span style="display:inline-block;width:7px;height:7px;background:#a855f7;'
+            'border-radius:50%;flex-shrink:0;margin-top:5px;"></span>'
+            if unread else
+            '<span style="display:inline-block;width:7px;height:7px;flex-shrink:0;"></span>'
+        )
+        row_bg   = "background:#2a0a4a;" if unread else ""
+        msg_col  = "#e9d5ff" if unread else "#7c5cbc"
+        rows_html += (
+            f'<div style="display:flex;align-items:flex-start;gap:10px;padding:11px 16px;'
+            f'border-bottom:1px solid #2d1457;{row_bg}">'
+            f'  <span style="font-size:1.1em;margin-top:1px;">{icon}</span>'
+            f'  <div style="flex:1;min-width:0;">'
+            f'    <div style="font-size:.82em;color:{msg_col};line-height:1.55;">{n["message"]}</div>'
+            f'    <div style="font-size:.65em;color:#4c1d95;margin-top:3px;">{ts} UTC</div>'
+            f'  </div>'
+            f'  {dot}'
+            f'</div>'
+        )
+
+    if not rows_html:
+        rows_html = (
+            '<div style="padding:28px 16px;text-align:center;color:#6d28d9;font-size:.85em;">'
+            '🎉 All caught up — no notifications yet.</div>'
+        )
+
+    st.markdown(
+        f'<div style="background:#1a0933;border:1.5px solid #3d1a72;border-radius:16px;'
+        f'overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.5);margin-top:6px;">'
+        f'  <div style="padding:12px 16px;border-bottom:1px solid #2d1457;'
+        f'              display:flex;justify-content:space-between;align-items:center;">'
+        f'    <span style="color:#f3e8ff;font-weight:700;font-size:.88em;letter-spacing:.2px;">'
+        f'      🔔 Notifications</span>'
+        f'    <span style="background:#3d1a72;color:#c084fc;border-radius:20px;'
+        f'                 padding:2px 10px;font-size:.72em;font-weight:700;">'
+        f'      {unread_count} unread</span>'
+        f'  </div>'
+        f'  {rows_html}'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    if unread_count:
+        if st.button("✓ Mark all as read", key="notif_clear_all", use_container_width=True):
+            try:
+                requests.patch(f"{API_URL}/me/notifications/read-all", headers=auth_headers(), timeout=5)
+                st.session_state.pop("notifs_cache", None)
+                st.session_state.show_notif_panel = False
+                st.rerun()
+            except Exception:
+                pass
 
 
 # ── BROWSER PUSH NOTIFICATION REQUEST ─────────────────────────────────────────
@@ -608,7 +632,7 @@ if _unread_msgs and not st.session_state.get("browser_notif_requested"):
 
 
 # ── TOP BAR ───────────────────────────────────────────────────────────────────
-hdr_left, hdr_right = st.columns([0.75, 0.25])
+hdr_left, hdr_right = st.columns([0.65, 0.35])
 with hdr_left:
     st.markdown(
         '<h1 style="color:#3b0764;font-weight:800;letter-spacing:-1px;margin-bottom:0;">🎯 DSA Revision Planner</h1>'
