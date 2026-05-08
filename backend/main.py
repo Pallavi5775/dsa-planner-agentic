@@ -1,12 +1,13 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.api.routes import router
 from backend.api.auth import router as auth_router
+from backend.api.notification_routes import router as notif_router
 
 log = logging.getLogger(__name__)
 
@@ -75,9 +76,91 @@ async def _weekly_worker() -> None:
             await _run_weekly_summaries()
 
 
+async def _run_daily_notifications() -> None:
+    """Send daily digest notifications to users whose notify_hour matches the current UTC hour."""
+    try:
+        from backend.db.session import AsyncSessionLocal
+        from backend.db.models import User, UserQuestionProgress, PracticeLog
+        from backend.services.notifications import notify_user
+        from sqlalchemy.future import select
+
+        now = datetime.now(timezone.utc)
+        today_str = now.date().isoformat()
+        yesterday_str = (now.date() - timedelta(days=1)).isoformat()
+
+        async with AsyncSessionLocal() as db:
+            users = (await db.execute(
+                select(User).where(User.notify_hour == now.hour)
+            )).scalars().all()
+
+            for user in users:
+                # Skip if already notified today
+                if user.last_notif_date == today_str:
+                    continue
+                try:
+                    messages: list[tuple[str, str]] = []
+
+                    # Pending revisions count
+                    pending_count = len((await db.execute(
+                        select(UserQuestionProgress).where(
+                            UserQuestionProgress.user_id == user.id,
+                            UserQuestionProgress.next_revision.isnot(None),
+                            UserQuestionProgress.next_revision <= today_str,
+                        )
+                    )).scalars().all())
+                    if pending_count:
+                        noun = "revision" if pending_count == 1 else "revisions"
+                        messages.append((
+                            f"📚 {pending_count} {noun} pending today — open the planner to keep your streak alive!",
+                            "revisions",
+                        ))
+
+                    # Streak warning: no practice today AND no practice yesterday
+                    had_today = bool((await db.execute(
+                        select(PracticeLog).where(
+                            PracticeLog.user_id == user.id,
+                            PracticeLog.date == today_str,
+                        ).limit(1)
+                    )).scalar_one_or_none())
+
+                    had_yesterday = bool((await db.execute(
+                        select(PracticeLog).where(
+                            PracticeLog.user_id == user.id,
+                            PracticeLog.date == yesterday_str,
+                        ).limit(1)
+                    )).scalar_one_or_none())
+
+                    if not had_today and not had_yesterday:
+                        messages.append((
+                            "🔥 You're losing your streak! No practice logged today or yesterday. Jump back in now!",
+                            "streak",
+                        ))
+
+                    for message, notif_type in messages:
+                        await notify_user(db, user, message, notif_type)
+
+                    user.last_notif_date = today_str
+                    await db.commit()
+
+                except Exception as e:
+                    log.warning("Daily notification failed for user_id=%s: %s", user.id, e)
+
+    except Exception as e:
+        log.error("Daily notification worker error: %s", e)
+
+
+async def _notification_worker() -> None:
+    """Wake up every hour to dispatch daily digest notifications."""
+    while True:
+        await asyncio.sleep(3600)
+        log.debug("Running daily notification check…")
+        await _run_daily_notifications()
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     asyncio.create_task(_weekly_worker())
+    asyncio.create_task(_notification_worker())
     yield
 
 
@@ -93,3 +176,4 @@ app.add_middleware(
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(router, prefix="/api")
+app.include_router(notif_router, prefix="/api")

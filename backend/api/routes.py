@@ -60,6 +60,33 @@ async def _validate_then_push(user_id: int, qid: int, session_data: dict) -> Non
             except Exception as ie:
                 log.warning("[session] insight skipped for %s: %s", q, ie)
 
+        # Step 4 — mastery notification: compute per-pattern accuracy for this user
+        try:
+            pattern = session_data.get("pattern", "")
+            if pattern:
+                from backend.db.models import UserQuestionProgress, Question as QuestionModel
+                from backend.services.notifications import notify_user
+                from sqlalchemy.future import select as sa_select
+
+                async with AsyncSessionLocal() as db:
+                    rows = (await db.execute(
+                        sa_select(UserQuestionProgress)
+                        .join(QuestionModel, UserQuestionProgress.question_id == QuestionModel.id)
+                        .where(
+                            UserQuestionProgress.user_id == user_id,
+                            QuestionModel.pattern == pattern,
+                            UserQuestionProgress.accuracy.isnot(None),
+                        )
+                    )).scalars().all()
+
+                    if rows:
+                        avg_acc = round(sum(r.accuracy for r in rows) / len(rows))
+                        msg = f"🏆 *{pattern}* mastery updated to *{avg_acc}%* across {len(rows)} question{'s' if len(rows) != 1 else ''}."
+                        await notify_user(db, user, msg, "mastery")
+                        log.info("[session] mastery notif sent: pattern=%s acc=%s%%", pattern, avg_acc)
+        except Exception as me:
+            log.warning("[session] mastery notification failed: %s", me)
+
     except Exception as e:
         log.error("[session] validate+push failed for user=%s qid=%s: %s", user_id, qid, e, exc_info=True)
 

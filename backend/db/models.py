@@ -14,14 +14,22 @@ class User(Base):
     oauth_provider = Column(String, nullable=True)
     oauth_id = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
-    github_username = Column(String, nullable=True)       # original GitHub login (e.g. "john-doe")
-    github_access_token = Column(String, nullable=True)   # OAuth token for GitHub API
+    github_username = Column(String, nullable=True)
+    github_access_token = Column(String, nullable=True)
     role = Column(String, default="user", nullable=False)
     practice_days = Column(String, default="", nullable=False)
+
+    # Notification preferences
+    email_notif_enabled = Column(Boolean, default=False, nullable=False)
+    telegram_notif_enabled = Column(Boolean, default=False, nullable=False)
+    telegram_chat_id = Column(String, nullable=True)
+    notify_hour = Column(Integer, default=8, nullable=False)  # UTC hour for daily digest
+    last_notif_date = Column(String, nullable=True)           # ISO date; prevents duplicate daily notifs
 
     progress = relationship("UserQuestionProgress", back_populates="user", cascade="all, delete")
     logs = relationship("PracticeLog", back_populates="user", cascade="all, delete")
     pattern_notes = relationship("UserPatternNote", back_populates="user", cascade="all, delete")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete")
 
 
 class Question(Base):
@@ -97,3 +105,17 @@ class UserPatternNote(Base):
     memory_techniques = Column(String, default="")
 
     user = relationship("User", back_populates="pattern_notes")
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    __table_args__ = {"schema": "dsa"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("dsa.users.id"), nullable=False)
+    message = Column(String, nullable=False)
+    notif_type = Column(String, default="info", nullable=False)  # revisions | streak | mastery | info
+    is_read = Column(Boolean, default=False, nullable=False)
+    created_at = Column(String, nullable=False)
+
+    user = relationship("User", back_populates="notifications")

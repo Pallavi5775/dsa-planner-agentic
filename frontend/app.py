@@ -500,6 +500,113 @@ for key, val in [("active_qid", None), ("view_last_qid", None), ("cal_year", _lo
     if key not in st.session_state:
         st.session_state[key] = val
 
+
+# ── NOTIFICATION HELPERS ───────────────────────────────────────────────────────
+def _fetch_notifications():
+    """Fetch in-app notifications from the API (cached per session until invalidated)."""
+    if "notifs_cache" not in st.session_state:
+        try:
+            r = requests.get(f"{API_URL}/me/notifications", headers=auth_headers(), timeout=5)
+            st.session_state.notifs_cache = r.json() if r.status_code == 200 else []
+        except Exception:
+            st.session_state.notifs_cache = []
+    return st.session_state.notifs_cache
+
+
+def _show_in_app_toasts():
+    """Show st.toast() for unread notifications once per session load."""
+    if st.session_state.get("toasts_shown"):
+        return
+    notifs = _fetch_notifications()
+    unread = [n for n in notifs if not n.get("is_read")]
+    icons = {"revisions": "📚", "streak": "🔥", "mastery": "🏆"}
+    for n in unread[:3]:  # cap at 3 to avoid flooding
+        icon = icons.get(n.get("type", ""), "🔔")
+        st.toast(f"{icon} {n['message']}", icon=icon)
+    st.session_state.toasts_shown = True
+
+
+_show_in_app_toasts()
+
+
+def _notification_bell():
+    """Render unread count badge and mark-all-read button."""
+    notifs = _fetch_notifications()
+    unread_count = sum(1 for n in notifs if not n.get("is_read"))
+    badge = f" ({unread_count})" if unread_count else ""
+    label = f"🔔{badge}"
+    if st.button(label, key="notif_bell_btn", help="Notifications", use_container_width=True):
+        st.session_state.show_notif_panel = not st.session_state.get("show_notif_panel", False)
+
+    if st.session_state.get("show_notif_panel"):
+        _render_notification_panel(notifs)
+
+
+def _render_notification_panel(notifs: list):
+    type_icons = {"revisions": "📚", "streak": "🔥", "mastery": "🏆", "info": "ℹ️"}
+    with st.container():
+        st.markdown(
+            '<div style="background:#1e0b38;border:1.5px solid #3d1a72;border-radius:14px;'
+            'padding:14px 16px;margin-top:4px;max-height:300px;overflow-y:auto;">',
+            unsafe_allow_html=True,
+        )
+        if not notifs:
+            st.markdown('<p style="color:#a78bfa;font-size:.85em;text-align:center;">No notifications yet.</p>', unsafe_allow_html=True)
+        else:
+            col_title, col_clear = st.columns([2, 1])
+            col_title.markdown('<span style="color:#f3e8ff;font-weight:700;font-size:.85em;">Notifications</span>', unsafe_allow_html=True)
+            if col_clear.button("Clear all", key="notif_clear_all", use_container_width=True):
+                try:
+                    requests.patch(f"{API_URL}/me/notifications/read-all", headers=auth_headers(), timeout=5)
+                    st.session_state.pop("notifs_cache", None)
+                    st.session_state.show_notif_panel = False
+                    st.rerun()
+                except Exception:
+                    pass
+
+            for n in notifs[:10]:
+                icon = type_icons.get(n.get("type", "info"), "🔔")
+                alpha = "1" if not n.get("is_read") else "0.5"
+                ts = n.get("created_at", "")[:16].replace("T", " ")
+                st.markdown(
+                    f'<div style="opacity:{alpha};padding:8px 0;'
+                    f'border-bottom:1px solid #2d1457;">'
+                    f'<span style="font-size:.8em;color:#e9d5ff;">{icon} {n["message"]}</span><br>'
+                    f'<span style="font-size:.65em;color:#6d28d9;">{ts} UTC</span>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+        st.markdown('</div>', unsafe_allow_html=True)
+
+
+# ── BROWSER PUSH NOTIFICATION REQUEST ─────────────────────────────────────────
+# Requests the Notification API permission once; shows browser alerts for unread items
+# Only fires when there are unread notifications so the popup isn't annoying on every load.
+_unread_msgs = [n["message"] for n in _fetch_notifications() if not n.get("is_read")][:3]
+if _unread_msgs and not st.session_state.get("browser_notif_requested"):
+    _msgs_js = str(_unread_msgs).replace("'", "\\'").replace('"', '\\"')
+    st.markdown(f"""
+<script>
+(function() {{
+    var msgs = {_unread_msgs};
+    function showNotifs() {{
+        msgs.forEach(function(m) {{
+            new Notification("🎯 DSA Revision Planner", {{ body: m, icon: "" }});
+        }});
+    }}
+    if (Notification.permission === "granted") {{
+        showNotifs();
+    }} else if (Notification.permission !== "denied") {{
+        Notification.requestPermission().then(function(p) {{
+            if (p === "granted") showNotifs();
+        }});
+    }}
+}})();
+</script>
+""", unsafe_allow_html=True)
+    st.session_state.browser_notif_requested = True
+
+
 # ── TOP BAR ───────────────────────────────────────────────────────────────────
 hdr_left, hdr_right = st.columns([0.75, 0.25])
 with hdr_left:
@@ -526,11 +633,15 @@ with hdr_right:
         f'</div>',
         unsafe_allow_html=True,
     )
-    if st.button("Logout", key="logout_btn", use_container_width=True):
-        st.query_params.clear()
-        for k in ['token', 'username', 'user_id', 'role', 'active_qid', 'start_timestamp']:
-            st.session_state.pop(k, None)
-        st.rerun()
+    btn_left, btn_right = st.columns(2)
+    with btn_left:
+        _notification_bell()
+    with btn_right:
+        if st.button("Logout", key="logout_btn", use_container_width=True):
+            st.query_params.clear()
+            for k in ['token', 'username', 'user_id', 'role', 'active_qid', 'start_timestamp']:
+                st.session_state.pop(k, None)
+            st.rerun()
 
 questions = fetch_questions()
 df = pd.DataFrame(questions) if questions else pd.DataFrame()
@@ -1054,6 +1165,110 @@ with tabs[3]:
                     st.success("Schedule set to daily (every day).")
             else:
                 st.error("Failed to save schedule.")
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+    # ── Notification Settings ─────────────────────────────────────────────────
+    st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+    st.markdown(
+        '<p style="font-size:.7em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
+        'color:#7c3aed;margin-bottom:16px;">Notification Settings</p>',
+        unsafe_allow_html=True
+    )
+
+    # Load existing settings once
+    if "notif_settings_loaded" not in st.session_state:
+        try:
+            _ns = requests.get(f"{API_URL}/me/notification-settings", headers=auth_headers(), timeout=5)
+            if _ns.status_code == 200:
+                _nsd = _ns.json()
+                st.session_state.notif_email_enabled = _nsd.get("email_notif_enabled", False)
+                st.session_state.notif_tg_enabled = _nsd.get("telegram_notif_enabled", False)
+                st.session_state.notif_tg_chat_id = _nsd.get("telegram_chat_id") or ""
+                st.session_state.notif_hour = _nsd.get("notify_hour", 8)
+        except Exception:
+            pass
+        st.session_state.notif_settings_loaded = True
+
+    st.markdown(
+        '<div style="background:#fff;border:1.5px solid #ede9fe;border-radius:16px;'
+        'padding:24px 28px;max-width:520px;box-shadow:0 2px 8px rgba(124,58,237,.07);">',
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+        '<p style="font-size:.82em;color:#6b7280;margin-bottom:18px;">'
+        'Get reminders for pending revisions, streak warnings, and mastery updates.</p>',
+        unsafe_allow_html=True
+    )
+
+    # --- Daily digest hour ---
+    notif_hour = st.slider(
+        "Daily digest time (UTC hour)", min_value=0, max_value=23,
+        value=int(st.session_state.get("notif_hour", 8)),
+        key="notif_hour_slider",
+        help="The UTC hour at which your daily digest is sent (e.g. 8 = 08:00 UTC)"
+    )
+
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+
+    # --- Email toggle ---
+    email_enabled = st.toggle(
+        "📧 Email notifications",
+        value=bool(st.session_state.get("notif_email_enabled", False)),
+        key="notif_email_toggle",
+    )
+
+    # --- Telegram toggle + chat ID ---
+    tg_enabled = st.toggle(
+        "✈️ Telegram notifications",
+        value=bool(st.session_state.get("notif_tg_enabled", False)),
+        key="notif_tg_toggle",
+    )
+    tg_chat_id = ""
+    if tg_enabled:
+        tg_chat_id = st.text_input(
+            "Telegram Chat ID",
+            value=st.session_state.get("notif_tg_chat_id", ""),
+            key="notif_tg_chat_id_input",
+            placeholder="e.g. 123456789",
+        )
+        st.markdown(
+            '<div style="background:#2a1050;border-left:3px solid #a855f7;border-radius:0 8px 8px 0;'
+            'padding:10px 14px;font-size:.76em;color:#e9d5ff;line-height:1.8;margin-top:2px;">'
+            '<b style="color:#c084fc;">How to find your Chat ID:</b><br>'
+            '1. Open Telegram → search <b>@dsa_planner_bot</b> → send <code>/start</code><br>'
+            '2. Then open <b>@userinfobot</b> → send <code>/start</code><br>'
+            '3. It replies with <b>Your user ID: 123456789</b> — paste that number above'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+
+    if st.button("💾 Save Notification Settings", type="primary", key="save_notif_btn"):
+        payload = {
+            "email_notif_enabled": email_enabled,
+            "telegram_notif_enabled": tg_enabled,
+            "telegram_chat_id": tg_chat_id if tg_enabled else "",
+            "notify_hour": notif_hour,
+        }
+        try:
+            _r = requests.patch(
+                f"{API_URL}/me/notification-settings",
+                json=payload,
+                headers=auth_headers(),
+                timeout=5,
+            )
+            if _r.status_code == 200:
+                st.session_state.notif_email_enabled = email_enabled
+                st.session_state.notif_tg_enabled = tg_enabled
+                st.session_state.notif_tg_chat_id = tg_chat_id
+                st.session_state.notif_hour = notif_hour
+                st.success("Notification settings saved!")
+            else:
+                st.error("Failed to save notification settings.")
         except Exception as e:
             st.error(f"Error: {e}")
 
