@@ -1,51 +1,43 @@
-import asyncio
 import logging
 import os
-import smtplib
 from datetime import datetime, timezone
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 import httpx
 
 log = logging.getLogger(__name__)
 
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-SMTP_FROM = os.getenv("SMTP_FROM", "") or SMTP_USER
+RESEND_API_KEY    = os.getenv("RESEND_API_KEY", "")
+RESEND_FROM       = os.getenv("RESEND_FROM", "DSA Planner <info@dsa-planner.co.in>")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://dsa-planner.co.in")
+FRONTEND_URL      = os.getenv("FRONTEND_URL", "https://dsa-planner.co.in")
 
 
-# ── Email ──────────────────────────────────────────────────────────────────────
+# ── Email via Resend ───────────────────────────────────────────────────────────
 
-def _send_email_sync(to_email: str, subject: str, body_html: str) -> bool:
-    if not SMTP_USER or not SMTP_PASSWORD:
-        log.warning("SMTP_USER/SMTP_PASSWORD not set — skipping email to %s", to_email)
+async def send_email(to_email: str, subject: str, body_html: str) -> bool:
+    if not RESEND_API_KEY:
+        log.warning("RESEND_API_KEY not set — skipping email to %s", to_email)
         return False
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = SMTP_FROM
-        msg["To"] = to_email
-        msg.attach(MIMEText(body_html, "html"))
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as smtp:
-            smtp.ehlo()
-            smtp.starttls()
-            smtp.login(SMTP_USER, SMTP_PASSWORD)
-            smtp.sendmail(SMTP_FROM, to_email, msg.as_string())
-        log.info("Email sent to %s: %s", to_email, subject)
-        return True
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {RESEND_API_KEY}"},
+                json={
+                    "from":    RESEND_FROM,
+                    "to":      [to_email],
+                    "subject": subject,
+                    "html":    body_html,
+                },
+            )
+        if r.status_code in (200, 201):
+            log.info("Email sent via Resend to %s", to_email)
+            return True
+        log.error("Resend API error %s: %s", r.status_code, r.text)
+        return False
     except Exception as e:
         log.error("Email send failed to %s: %s", to_email, e)
         return False
-
-
-async def send_email(to_email: str, subject: str, body_html: str) -> bool:
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _send_email_sync, to_email, subject, body_html)
 
 
 def _email_body(message: str) -> str:
