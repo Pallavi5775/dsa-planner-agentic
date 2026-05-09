@@ -3,6 +3,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from urllib.parse import quote
 
 from backend.db.session import get_db
 from backend.crud.user import get_or_create_oauth_user
@@ -66,14 +67,17 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
         )
         info = info_resp.json()
 
-    user = await get_or_create_oauth_user(
-        db,
-        provider="google",
-        oauth_id=info["sub"],
-        email=info["email"],
-        username=info.get("name") or info["email"].split("@")[0],
-        avatar_url=info.get("picture"),
-    )
+    try:
+        user = await get_or_create_oauth_user(
+            db,
+            provider="google",
+            oauth_id=info["sub"],
+            email=info["email"],
+            username=info.get("name") or info["email"].split("@")[0],
+            avatar_url=info.get("picture"),
+        )
+    except HTTPException as exc:
+        return RedirectResponse(f"{FRONTEND_URL}?auth_error={quote(exc.detail)}")
     return _redirect_to_frontend(user)
 
 
@@ -127,14 +131,17 @@ async def github_callback(code: str, db: AsyncSession = Depends(get_db)):
 
     gh_login = gh_user.get("login", "")
 
-    user = await get_or_create_oauth_user(
-        db,
-        provider="github",
-        oauth_id=str(gh_user["id"]),
-        email=email,
-        username=gh_login or email.split("@")[0],
-        avatar_url=gh_user.get("avatar_url"),
-    )
+    try:
+        user = await get_or_create_oauth_user(
+            db,
+            provider="github",
+            oauth_id=str(gh_user["id"]),
+            email=email,
+            username=gh_login or email.split("@")[0],
+            avatar_url=gh_user.get("avatar_url"),
+        )
+    except HTTPException as exc:
+        return RedirectResponse(f"{FRONTEND_URL}?auth_error={quote(exc.detail)}")
 
     # Persist GitHub login + token for API calls (repo commits, etc.)
     user.github_username = gh_login

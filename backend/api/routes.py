@@ -1,5 +1,6 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Body, UploadFile, File, BackgroundTasks
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -396,3 +397,70 @@ async def sync_questions(
 ):
     added = await crud.sync_questions_from_file(db)
     return {"status": f"Synced {added} new questions from DSA_Must_Solve_Problems.md"}
+
+
+# ── Admin: user management ─────────────────────────────────────────────────────
+
+class _UserCreate(BaseModel):
+    email: str
+    username: str | None = None
+    role: str = "user"
+
+
+@router.post("/users", status_code=201)
+async def admin_create_user(
+    body: _UserCreate,
+    db: AsyncSession = Depends(get_db),
+    _: int = Depends(require_admin),
+):
+    """Admin-only: pre-register a user by email. They can then log in via OAuth."""
+    from backend.crud.user import _sanitize_username, _unique_username
+
+    existing = (await db.execute(select(User).where(User.email == body.email))).scalar_one_or_none()
+    if existing:
+        raise HTTPException(status_code=409, detail="A user with that email already exists")
+
+    base = _sanitize_username(body.username or body.email.split("@")[0])
+    safe_username = await _unique_username(db, base)
+    user = User(
+        username=safe_username,
+        email=body.email,
+        hashed_password=None,
+        oauth_provider=None,
+        oauth_id=None,
+        role=body.role,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return {"id": user.id, "username": user.username, "email": user.email, "role": user.role}
+
+
+@router.get("/users")
+async def admin_list_users(
+    db: AsyncSession = Depends(get_db),
+    _: int = Depends(require_admin),
+):
+    """Admin-only: list all registered users."""
+    users = (await db.execute(select(User))).scalars().all()
+    return [
+        {"id": u.id, "username": u.username, "email": u.email, "role": u.role,
+         "oauth_provider": u.oauth_provider}
+        for u in users
+    ]
+
+
+@router.delete("/users/{uid}", status_code=204)
+async def admin_delete_user(
+    uid: int,
+    db: AsyncSession = Depends(get_db),
+    admin_id: int = Depends(require_admin),
+):
+    """Admin-only: delete a user account."""
+    if uid == admin_id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+    user = (await db.execute(select(User).where(User.id == uid))).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.delete(user)
+    await db.commit()

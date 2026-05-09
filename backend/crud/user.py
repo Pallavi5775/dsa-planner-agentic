@@ -1,5 +1,6 @@
 import os
 import re
+from fastapi import HTTPException
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -78,7 +79,14 @@ async def get_or_create_oauth_user(
         else:
             email = f"{provider}_{oauth_id}@oauth.local"
 
-    # 3. Brand-new user
+    # 3. Brand-new user — only admins (or admin-pre-registered emails) may create accounts.
+    #    Non-admin emails must be pre-registered by an admin via POST /api/users/.
+    if not _is_admin_email(email):
+        raise HTTPException(
+            status_code=403,
+            detail="Account creation is restricted. Ask an admin to create your account first.",
+        )
+
     safe_username = await _unique_username(db, _sanitize_username(username))
     user = User(
         username=safe_username,
