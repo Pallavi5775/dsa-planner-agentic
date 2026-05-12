@@ -75,7 +75,7 @@ def show_auth_page():
     """Full-screen OAuth login page."""
     st.markdown("""
     <style>
-    html, body, [data-testid="stAppViewContainer"] { background: #faf5ff !important; }
+    html, body, [data-testid="stAppViewContainer"] { background: #faf6f0 !important; }
     .auth-btn {
         display: flex; align-items: center; justify-content: center; gap: 10px;
         width: 100%; padding: 13px 20px; border-radius: 12px; font-size: 1em;
@@ -84,7 +84,7 @@ def show_auth_page():
     }
     .auth-btn:hover { opacity: .85; }
     .btn-google { background:#fff; color:#3c4043; border-color:#dadce0; }
-    .btn-github { background:#24292e; color:#fff; border-color:#24292e; }
+    .btn-github { background:#1b1e2e; color:#faf6f0; border-color:#1b1e2e; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -93,10 +93,10 @@ def show_auth_page():
         st.markdown(
             '<div style="font-size:2.2em;text-align:center;margin-bottom:4px">🎯</div>'
             '<div style="text-align:center;font-size:1.5em;font-weight:800;'
-            'background:linear-gradient(135deg,#7c3aed,#db2777);'
+            'background:linear-gradient(135deg,#c97b6e,#b5615a);'
             '-webkit-background-clip:text;-webkit-text-fill-color:transparent;'
             'margin-bottom:2px">DSA Revision Planner</div>'
-            '<div style="text-align:center;color:#a78bfa;font-size:.85em;margin-bottom:28px">'
+            '<div style="text-align:center;color:#d4a898;font-size:.85em;margin-bottom:28px">'
             'Track · Practice · Master</div>',
             unsafe_allow_html=True,
         )
@@ -124,7 +124,7 @@ def show_auth_page():
         )
 
         st.markdown(
-            '<p style="text-align:center;color:#a78bfa;font-size:.78em;margin-top:16px">'
+            '<p style="text-align:center;color:#d4a898;font-size:.78em;margin-top:16px">'
             'We only read your public profile and email address.</p>',
             unsafe_allow_html=True,
         )
@@ -132,12 +132,14 @@ def show_auth_page():
     st.stop()  # don't render the main app
 
 # ── GLOBAL CSS ────────────────────────────────────────────────────────────────
+# Brand palette — Pallavi's Learning Hub
+# Dark navy #1b1e2e · Cream #faf6f0 · Rose #c97b6e · Deep rose #b5615a
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 html, body, [data-testid="stAppViewContainer"] {
-    background: #faf5ff !important;
+    background: #faf6f0 !important;
     font-family: 'Inter','Segoe UI',sans-serif;
     font-size: 17px !important;
 }
@@ -145,13 +147,13 @@ html, body, [data-testid="stAppViewContainer"] {
 
 [data-testid="metric-container"] {
     background: #fff !important;
-    border: 1.5px solid #ede9fe !important;
+    border: 1.5px solid #f0ddd8 !important;
     border-radius: 16px !important;
     padding: 18px 22px !important;
-    box-shadow: 0 2px 8px rgba(124,58,237,.08) !important;
+    box-shadow: 0 2px 8px rgba(201,123,110,.08) !important;
 }
 [data-testid="stMetricLabel"] p {
-    color: #7c3aed !important;
+    color: #c97b6e !important;
     font-size: .72em !important;
     font-weight: 700 !important;
     letter-spacing: .8px !important;
@@ -160,7 +162,7 @@ html, body, [data-testid="stAppViewContainer"] {
 [data-testid="stMetricValue"] {
     font-size: 1.9em !important;
     font-weight: 800 !important;
-    background: linear-gradient(135deg,#7c3aed,#db2777) !important;
+    background: linear-gradient(135deg,#c97b6e,#b5615a) !important;
     -webkit-background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
 }
@@ -169,21 +171,21 @@ html, body, [data-testid="stAppViewContainer"] {
     font-weight: 600; color: #9ca3af; font-size: .9em;
 }
 [data-testid="stTabs"] [role="tab"][aria-selected="true"] {
-    color: #7c3aed !important;
-    border-bottom: 2.5px solid #7c3aed !important;
+    color: #c97b6e !important;
+    border-bottom: 2.5px solid #c97b6e !important;
 }
 
 [data-testid="stSelectbox"] > div > div {
     border-radius: 10px !important;
-    border-color: #ede9fe !important;
+    border-color: #f0ddd8 !important;
     background: #fff !important;
     font-size: .9em !important;
 }
 
 /* ── Sidebar ── */
 [data-testid="stSidebar"] {
-    background: #1e0b38 !important;
-    border-right: 1px solid #2d1457 !important;
+    background: #1b1e2e !important;
+    border-right: 1px solid #252840 !important;
     min-width: 440px !important;
     max-width: 440px !important;
 }
@@ -193,15 +195,15 @@ html, body, [data-testid="stAppViewContainer"] {
 }
 [data-testid="stSidebar"] p,
 [data-testid="stSidebar"] span,
-[data-testid="stSidebar"] label { color: #e2d9f3 !important; }
+[data-testid="stSidebar"] label { color: #ebe0dc !important; }
 [data-testid="stSidebar"] h1,
 [data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3 { color: #f3e8ff !important; }
+[data-testid="stSidebar"] h3 { color: #faf0ed !important; }
 [data-testid="stSidebar"] textarea,
 [data-testid="stSidebar"] input {
-    background: #2a1050 !important;
-    border: 1px solid #3d1a72 !important;
-    color: #e9d5ff !important;
+    background: #242838 !important;
+    border: 1px solid #2d3348 !important;
+    color: #f0e8e5 !important;
     border-radius: 10px !important;
     font-size: .95em !important;
     line-height: 1.6 !important;
@@ -209,18 +211,49 @@ html, body, [data-testid="stAppViewContainer"] {
 }
 [data-testid="stSidebar"] textarea:focus,
 [data-testid="stSidebar"] input:focus {
-    border-color: #a855f7 !important;
-    box-shadow: 0 0 0 2px rgba(168,85,247,.25) !important;
+    border-color: #e8a898 !important;
+    box-shadow: 0 0 0 2px rgba(232,168,152,.25) !important;
 }
 [data-testid="stSidebar"] .stButton > button {
-    border-radius: 10px !important;
+    border-radius: 8px !important;
     font-weight: 600 !important;
-    font-size: .9em !important;
+    font-size: .85em !important;
+    padding: 0.22rem 0.65rem !important;
+    line-height: 1.4 !important;
 }
 [data-testid="stSidebar"] [data-testid="baseButton-primary"] > button {
-    background: linear-gradient(135deg,#7c3aed,#db2777) !important;
+    background: linear-gradient(135deg,#c97b6e,#b5615a) !important;
     border: none !important; color: #fff !important;
-    box-shadow: 0 2px 8px rgba(124,58,237,.35) !important;
+    box-shadow: 0 2px 8px rgba(201,123,110,.35) !important;
+}
+
+/* ── Buttons — compact + high-contrast ── */
+.stButton > button {
+    padding: 0.22rem 0.7rem !important;
+    font-size: 0.83em !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    line-height: 1.4 !important;
+    transition: all 0.15s ease !important;
+}
+[data-testid="baseButton-primary"] > button {
+    background: #c97b6e !important;
+    color: #ffffff !important;
+    border: none !important;
+    box-shadow: 0 2px 6px rgba(201,123,110,.4) !important;
+}
+[data-testid="baseButton-primary"] > button:hover {
+    background: #b5615a !important;
+    box-shadow: 0 3px 10px rgba(181,97,90,.45) !important;
+}
+[data-testid="baseButton-secondary"] > button {
+    background: #1b1e2e !important;
+    color: #faf6f0 !important;
+    border: 1.5px solid #1b1e2e !important;
+}
+[data-testid="baseButton-secondary"] > button:hover {
+    background: #252840 !important;
+    border-color: #252840 !important;
 }
 
 /* ── Code editor fallback textarea ── */
@@ -234,12 +267,12 @@ textarea[data-testid="stTextArea"],
     border: 1.5px solid #3c3c3c !important;
     border-radius: 8px !important;
     line-height: 1.65 !important;
-    caret-color: #c084fc !important;
+    caret-color: #e8a898 !important;
 }
 textarea[data-testid="stTextArea"]:focus,
 .code-editor-area textarea:focus {
-    border-color: #7c3aed !important;
-    box-shadow: 0 0 0 2px rgba(124,58,237,.3) !important;
+    border-color: #c97b6e !important;
+    box-shadow: 0 0 0 2px rgba(201,123,110,.3) !important;
     outline: none !important;
 }
 
@@ -269,17 +302,17 @@ def build_heatmap_html(sessions_by_date: dict, weeks: int = 16) -> str:
     start = today - td(days=today.weekday() + 7 * (weeks - 1))
 
     def cell_color(n):
-        if n == 0:   return "#f0ebff"
-        if n == 1:   return "#ddd6fe"
-        if n == 2:   return "#a78bfa"
-        if n == 3:   return "#7c3aed"
-        return "#4c1d95"
+        if n == 0:   return "#fdf0ec"
+        if n == 1:   return "#f5d5c8"
+        if n == 2:   return "#d4a898"
+        if n == 3:   return "#c97b6e"
+        return "#7a3f38"
 
     day_labels = ["Mon","","Wed","","Fri","","Sun"]
 
     # left day-name column
     day_col = "".join(
-        f'<div style="height:13px;line-height:13px;font-size:.6em;color:#a78bfa;'
+        f'<div style="height:13px;line-height:13px;font-size:.6em;color:#d4a898;'
         f'text-align:right;padding-right:4px;margin-bottom:2px;">{l}</div>'
         for l in day_labels
     )
@@ -297,7 +330,7 @@ def build_heatmap_html(sessions_by_date: dict, weeks: int = 16) -> str:
             left_px = col_idx * 15
             month_labels += (
                 f'<span style="position:absolute;left:{left_px}px;'
-                f'font-size:.6em;color:#7c3aed;font-weight:600;">'
+                f'font-size:.6em;color:#c97b6e;font-weight:600;">'
                 f'{cur.strftime("%b")}</span>'
             )
             prev_month = cur.month
@@ -312,7 +345,7 @@ def build_heatmap_html(sessions_by_date: dict, weeks: int = 16) -> str:
             bg    = cell_color(n)
             tip   = f"{day.strftime('%b %d')}: {n} session{'s' if n!=1 else ''}"
             is_today = day == today
-            border = "border:1.5px solid #7c3aed;" if is_today else ""
+            border = "border:1.5px solid #c97b6e;" if is_today else ""
             col += (
                 f'<div title="{tip}" style="width:11px;height:11px;border-radius:3px;'
                 f'background:{bg};{border}margin-bottom:2px;"></div>'
@@ -322,10 +355,10 @@ def build_heatmap_html(sessions_by_date: dict, weeks: int = 16) -> str:
         col_idx += 1
 
     return (
-        f'<div style="background:#fff;border:1.5px solid #ede9fe;border-radius:16px;'
-        f'padding:18px 20px;box-shadow:0 2px 8px rgba(124,58,237,.06);">'
+        f'<div style="background:#fff;border:1.5px solid #f0ddd8;border-radius:16px;'
+        f'padding:18px 20px;box-shadow:0 2px 8px rgba(201,123,110,.06);">'
         f'<div style="font-size:.7em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
-        f'color:#7c3aed;margin-bottom:10px;">Activity Heatmap — last {weeks} weeks</div>'
+        f'color:#c97b6e;margin-bottom:10px;">Activity Heatmap — last {weeks} weeks</div>'
         f'<div style="display:flex;align-items:flex-start;gap:0;">'
         f'  <div style="margin-top:12px;">{day_col}</div>'
         f'  <div style="position:relative;">'
@@ -334,9 +367,9 @@ def build_heatmap_html(sessions_by_date: dict, weeks: int = 16) -> str:
         f'  </div>'
         f'</div>'
         f'<div style="display:flex;align-items:center;gap:4px;margin-top:10px;">'
-        f'  <span style="font-size:.65em;color:#a78bfa;">Less</span>'
+        f'  <span style="font-size:.65em;color:#d4a898;">Less</span>'
         + "".join(f'<div style="width:10px;height:10px;border-radius:2px;background:{cell_color(i)};"></div>' for i in range(5))
-        + f'  <span style="font-size:.65em;color:#a78bfa;">More</span>'
+        + f'  <span style="font-size:.65em;color:#d4a898;">More</span>'
         f'</div>'
         f'</div>'
     )
@@ -362,16 +395,16 @@ def badge_html(label, bg, color):
 
 
 def coverage_badge(cs):
-    return badge_html(cs, "#fce7f3", "#9d174d") if cs == "Covered" else badge_html(cs, "#f5f3ff", "#6d28d9")
+    return badge_html(cs, "#fde8e3", "#8b4a42") if cs == "Covered" else badge_html(cs, "#fdf5f2", "#9b5a52")
 
 
 def revision_badge(rs):
     cfg = {
-        "Mastered":   ("#ede9fe", "#5b21b6"),
+        "Mastered":   ("#f0ddd8", "#8b4a42"),
         "Needs Work": ("#fff1f2", "#be123c"),
-        "Pending":    ("#fdf4ff", "#a21caf"),
+        "Pending":    ("#fdf5f2", "#c97b6e"),
     }
-    bg, col = cfg.get(rs, ("#fdf4ff", "#a21caf"))
+    bg, col = cfg.get(rs, ("#fdf5f2", "#c97b6e"))
     return badge_html(rs, bg, col)
 
 
@@ -385,7 +418,7 @@ def acc_bar_html(acc):
     col = "#22c55e" if acc >= 80 else "#f59e0b" if acc >= 60 else "#ec4899"
     return (
         f'<span style="display:inline-flex;align-items:center;gap:5px;">'
-        f'<span style="display:inline-block;background:#f5f3ff;border-radius:6px;height:6px;width:80px;vertical-align:middle;">'
+        f'<span style="display:inline-block;background:#fdf5f2;border-radius:6px;height:6px;width:80px;vertical-align:middle;">'
         f'<span style="display:block;height:6px;border-radius:6px;width:{min(acc,100):.0f}%;background:{grad};"></span></span>'
         f'<span style="font-size:.78em;color:{col};font-weight:600;">{acc:.0f}%</span>'
         f'</span>'
@@ -402,7 +435,7 @@ def build_calendar(questions, year, month):
             due_map.setdefault(nr, []).append(q)
 
     headers = "".join(
-        f'<div style="text-align:center;font-size:.6em;font-weight:700;color:#a78bfa;'
+        f'<div style="text-align:center;font-size:.6em;font-weight:700;color:#d4a898;'
         f'letter-spacing:.8px;text-transform:uppercase;padding:4px 0 8px;">{d}</div>'
         for d in ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
     )
@@ -420,21 +453,21 @@ def build_calendar(questions, year, month):
             is_due     = bool(qs)
 
             if is_today:
-                bg, border = "linear-gradient(135deg,#7c3aed,#db2777)", "transparent"
+                bg, border = "linear-gradient(135deg,#c97b6e,#b5615a)", "transparent"
                 dn_col = "#fff"
             elif is_overdue:
                 bg, border = "#fff1f2", "#fca5a5"
                 dn_col = "#be123c"
             elif is_due:
-                bg, border = "#faf5ff", "#c4b5fd"
-                dn_col = "#4c1d95"
+                bg, border = "#faf6f0", "#e8c4b8"
+                dn_col = "#7a3f38"
             else:
-                bg, border = "#faf5ff", "transparent"
+                bg, border = "#faf6f0", "transparent"
                 dn_col = "#6b7280"
 
             badge = ""
             if qs:
-                dot_bg = "#ef4444" if is_overdue else "linear-gradient(135deg,#7c3aed,#db2777)"
+                dot_bg = "#ef4444" if is_overdue else "linear-gradient(135deg,#c97b6e,#b5615a)"
                 badge = (
                     f'<span style="display:inline-block;background:{dot_bg};color:#fff;'
                     f'border-radius:10px;font-size:.58em;font-weight:700;padding:1px 5px;'
@@ -450,8 +483,8 @@ def build_calendar(questions, year, month):
             )
 
     return (
-        f'<div style="background:#fff;border:1.5px solid #ede9fe;border-radius:20px;'
-        f'padding:20px;box-shadow:0 4px 16px rgba(124,58,237,.08);">'
+        f'<div style="background:#fff;border:1.5px solid #f0ddd8;border-radius:20px;'
+        f'padding:20px;box-shadow:0 4px 16px rgba(201,123,110,.08);">'
         f'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;">'
         f'{headers}{cells}'
         f'</div></div>'
@@ -551,20 +584,20 @@ def _render_notification_panel(notifs: list):
         unread = not n.get("is_read")
         ts    = n.get("created_at", "")[:16].replace("T", " ")
         dot   = (
-            '<span style="display:inline-block;width:7px;height:7px;background:#a855f7;'
+            '<span style="display:inline-block;width:7px;height:7px;background:#e8a898;'
             'border-radius:50%;flex-shrink:0;margin-top:5px;"></span>'
             if unread else
             '<span style="display:inline-block;width:7px;height:7px;flex-shrink:0;"></span>'
         )
         row_bg   = "background:#2a0a4a;" if unread else ""
-        msg_col  = "#e9d5ff" if unread else "#7c5cbc"
+        msg_col  = "#f0e8e5" if unread else "#b5856a"
         rows_html += (
             f'<div style="display:flex;align-items:flex-start;gap:10px;padding:11px 16px;'
-            f'border-bottom:1px solid #2d1457;{row_bg}">'
+            f'border-bottom:1px solid #252840;{row_bg}">'
             f'  <span style="font-size:1.1em;margin-top:1px;">{icon}</span>'
             f'  <div style="flex:1;min-width:0;">'
             f'    <div style="font-size:.82em;color:{msg_col};line-height:1.55;">{n["message"]}</div>'
-            f'    <div style="font-size:.65em;color:#4c1d95;margin-top:3px;">{ts} UTC</div>'
+            f'    <div style="font-size:.65em;color:#7a3f38;margin-top:3px;">{ts} UTC</div>'
             f'  </div>'
             f'  {dot}'
             f'</div>'
@@ -572,18 +605,18 @@ def _render_notification_panel(notifs: list):
 
     if not rows_html:
         rows_html = (
-            '<div style="padding:28px 16px;text-align:center;color:#6d28d9;font-size:.85em;">'
+            '<div style="padding:28px 16px;text-align:center;color:#9b5a52;font-size:.85em;">'
             '🎉 All caught up — no notifications yet.</div>'
         )
 
     st.markdown(
-        f'<div style="background:#1a0933;border:1.5px solid #3d1a72;border-radius:16px;'
+        f'<div style="background:#151827;border:1.5px solid #2d3348;border-radius:16px;'
         f'overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.5);margin-top:6px;">'
-        f'  <div style="padding:12px 16px;border-bottom:1px solid #2d1457;'
+        f'  <div style="padding:12px 16px;border-bottom:1px solid #252840;'
         f'              display:flex;justify-content:space-between;align-items:center;">'
         f'    <span style="color:#f3e8ff;font-weight:700;font-size:.88em;letter-spacing:.2px;">'
         f'      🔔 Notifications</span>'
-        f'    <span style="background:#3d1a72;color:#c084fc;border-radius:20px;'
+        f'    <span style="background:#2d3348;color:#e8a898;border-radius:20px;'
         f'                 padding:2px 10px;font-size:.72em;font-weight:700;">'
         f'      {unread_count} unread</span>'
         f'  </div>'
@@ -636,7 +669,7 @@ hdr_left, hdr_right = st.columns([0.65, 0.35])
 with hdr_left:
     st.markdown(
         '<h1 style="color:#3b0764;font-weight:800;letter-spacing:-1px;margin-bottom:0;">🎯 DSA Revision Planner</h1>'
-        '<p style="color:#a78bfa;font-size:.88em;font-weight:500;margin-bottom:1.2rem;">Track · Practice · Master</p>',
+        '<p style="color:#d4a898;font-size:.88em;font-weight:500;margin-bottom:1.2rem;">Track · Practice · Master</p>',
         unsafe_allow_html=True,
     )
 with hdr_right:
@@ -646,13 +679,13 @@ with hdr_right:
 
     role_icon  = "👑" if is_admin else "👤"
     role_label = "Admin" if is_admin else "User"
-    role_bg    = "linear-gradient(135deg,#7c3aed,#db2777)" if is_admin else "linear-gradient(135deg,#6366f1,#8b5cf6)"
+    role_bg    = "linear-gradient(135deg,#c97b6e,#b5615a)" if is_admin else "linear-gradient(135deg,#c97b6e,#8b5cf6)"
 
     st.markdown(
         f'<div style="text-align:right;padding-top:10px;display:flex;justify-content:flex-end;gap:8px;align-items:center;">'
         f'<span style="background:{role_bg};color:#fff;border-radius:20px;'
         f'padding:4px 14px;font-size:.82em;font-weight:700;">{role_icon} {username}</span>'
-        f'<span style="background:#f3e8ff;color:#7c3aed;border-radius:20px;'
+        f'<span style="background:#f3e8ff;color:#c97b6e;border-radius:20px;'
         f'padding:3px 10px;font-size:.72em;font-weight:700;letter-spacing:.5px;text-transform:uppercase;">{role_label}</span>'
         f'</div>',
         unsafe_allow_html=True,
@@ -738,9 +771,9 @@ with tabs[0]:
 
         # ── Filter panel (no split HTML — pure native widgets) ────────────────
         st.markdown(
-            '<div style="background:#fff;border:1.5px solid #ede9fe;border-radius:14px;'
-            'padding:14px 18px 2px;margin-bottom:14px;box-shadow:0 1px 4px rgba(124,58,237,.05);">'
-            '<span style="font-size:.65em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#a78bfa;">🔎 Filters</span>'
+            '<div style="background:#fff;border:1.5px solid #f0ddd8;border-radius:14px;'
+            'padding:14px 18px 2px;margin-bottom:14px;box-shadow:0 1px 4px rgba(201,123,110,.05);">'
+            '<span style="font-size:.65em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#d4a898;">🔎 Filters</span>'
             '</div>',
             unsafe_allow_html=True
         )
@@ -777,7 +810,7 @@ with tabs[0]:
         elif sort_by == "Next Revision ↑":    flt = flt.sort_values('next_revision', ascending=True)
 
         st.markdown(
-            f'<p style="font-size:.78em;color:#a78bfa;font-weight:600;margin-bottom:8px;">'
+            f'<p style="font-size:.78em;color:#d4a898;font-weight:600;margin-bottom:8px;">'
             f'Showing {len(flt)} of {len(df)} problems</p>',
             unsafe_allow_html=True
         )
@@ -793,15 +826,15 @@ with tabs[0]:
 
             due_badge = badge_html("⚠ Due", "#ffe4e6", "#be123c") if is_due else ""
 
-            acc_col   = "#16a34a" if acc_val >= 80 else "#d97706" if acc_val >= 60 else "#db2777"
-            acc_bg    = "#dcfce7" if acc_val >= 80 else "#fef3c7" if acc_val >= 60 else "#fce7f3"
+            acc_col   = "#16a34a" if acc_val >= 80 else "#d97706" if acc_val >= 60 else "#b5615a"
+            acc_bg    = "#dcfce7" if acc_val >= 80 else "#fef3c7" if acc_val >= 60 else "#fde8e3"
             hint_icon = '<span title="Hint available" style="font-size:.75em;margin-left:4px;">💡</span>' if row.get('hint') else ""
             card_html = (
-                f'<div style="background:#fff;border:1.5px solid #ede9fe;border-radius:16px;'
+                f'<div style="background:#fff;border:1.5px solid #f0ddd8;border-radius:16px;'
                 f'padding:16px 20px;margin-bottom:10px;box-shadow:0 1px 6px rgba(219,39,119,.04);">'
                 f'  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px;">'
                 f'    <div style="display:flex;flex-wrap:wrap;gap:4px;">'
-                f'      {badge_html(row["pattern"],"#ede9fe","#5b21b6")}'
+                f'      {badge_html(row["pattern"],"#f0ddd8","#8b4a42")}'
                 f'      {coverage_badge(cs)}'
                 f'      {revision_badge(rs)}'
                 f'      {due_badge}'
@@ -854,7 +887,7 @@ with tabs[1]:
 
     nav_m.markdown(
         f'<div style="text-align:center;font-size:1.15em;font-weight:800;'
-        f'background:linear-gradient(135deg,#7c3aed,#db2777);'
+        f'background:linear-gradient(135deg,#c97b6e,#b5615a);'
         f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;padding-top:5px;">'
         f'{cal_lib.month_name[st.session_state.cal_month]} {st.session_state.cal_year}</div>',
         unsafe_allow_html=True
@@ -880,20 +913,20 @@ with tabs[1]:
     )
 
     st.markdown(
-        f'<p style="font-size:.75em;font-weight:700;color:#a78bfa;letter-spacing:.8px;'
+        f'<p style="font-size:.75em;font-weight:700;color:#d4a898;letter-spacing:.8px;'
         f'text-transform:uppercase;margin-bottom:10px;">Revisions this month — {len(month_qs)} problems</p>',
         unsafe_allow_html=True
     )
 
     if not month_qs:
-        st.markdown('<p style="color:#c4b5fd;font-size:.88em;">No revisions scheduled this month.</p>', unsafe_allow_html=True)
+        st.markdown('<p style="color:#e8c4b8;font-size:.88em;">No revisions scheduled this month.</p>', unsafe_allow_html=True)
     else:
         for q in month_qs:
             nr         = q['next_revision']
             is_over    = nr < today_str
             row_bg     = "#fff1f2" if is_over else "#fff"
-            row_border = "#fca5a5" if is_over else "#ede9fe"
-            date_col   = "#be123c" if is_over else "#7c3aed"
+            row_border = "#fca5a5" if is_over else "#f0ddd8"
+            date_col   = "#be123c" if is_over else "#c97b6e"
             ov_tag     = ' <span style="color:#be123c;font-size:.7em;font-weight:700;">⚠ OVERDUE</span>' if is_over else ""
             rs         = q.get('revision_status', 'Pending')
 
@@ -903,7 +936,7 @@ with tabs[1]:
                 f'  <span style="color:{date_col};font-weight:700;font-size:.75em;min-width:70px;">📅 {nr}</span>'
                 f'  <span style="color:#1e1b4b;font-weight:600;font-size:.84em;flex:1;">{q["title"]}{ov_tag}</span>'
                 f'  {revision_badge(rs)}'
-                f'  <span style="font-size:.78em;font-weight:800;color:{"#16a34a" if (q.get("accuracy") or 0)>=80 else "#d97706" if (q.get("accuracy") or 0)>=60 else "#db2777"};">🎯 {q.get("accuracy") or 0:.0f}%</span>'
+                f'  <span style="font-size:.78em;font-weight:800;color:{"#16a34a" if (q.get("accuracy") or 0)>=80 else "#d97706" if (q.get("accuracy") or 0)>=60 else "#b5615a"};">🎯 {q.get("accuracy") or 0:.0f}%</span>'
                 f'</div>',
                 unsafe_allow_html=True
             )
@@ -917,12 +950,12 @@ with tabs[2]:
     sbd = act.get("sessions_by_date", {})
 
     # ── Stat cards ────────────────────────────────────────────────────────────
-    def stat_card(icon, label, value, sub="", grad="linear-gradient(135deg,#7c3aed,#db2777)"):
+    def stat_card(icon, label, value, sub="", grad="linear-gradient(135deg,#c97b6e,#b5615a)"):
         return (
-            f'<div style="background:#fff;border:1.5px solid #ede9fe;border-radius:16px;'
-            f'padding:18px 20px;box-shadow:0 2px 8px rgba(124,58,237,.07);text-align:center;">'
+            f'<div style="background:#fff;border:1.5px solid #f0ddd8;border-radius:16px;'
+            f'padding:18px 20px;box-shadow:0 2px 8px rgba(201,123,110,.07);text-align:center;">'
             f'  <div style="font-size:1.6em;margin-bottom:4px;">{icon}</div>'
-            f'  <div style="font-size:.65em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#a78bfa;">{label}</div>'
+            f'  <div style="font-size:.65em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#d4a898;">{label}</div>'
             f'  <div style="font-size:2em;font-weight:800;background:{grad};-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.2;">{value}</div>'
             f'  <div style="font-size:.72em;color:#6b7280;margin-top:2px;">{sub}</div>'
             f'</div>'
@@ -931,9 +964,9 @@ with tabs[2]:
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.markdown(stat_card("🔥", "Streak",          f'{act.get("streak_days", 0)}d',  "days in a row"), unsafe_allow_html=True)
     c2.markdown(stat_card("📅", "Today",            act.get("today_sessions", 0),     f'{act.get("today_time_minutes", 0)}m spent'), unsafe_allow_html=True)
-    c3.markdown(stat_card("📆", "This Week",        act.get("weekly_sessions", 0),    "sessions", "linear-gradient(135deg,#6366f1,#a855f7)"), unsafe_allow_html=True)
-    c4.markdown(stat_card("🎯", "Total Sessions",   act.get("total_sessions", 0),     "all time",  "linear-gradient(135deg,#db2777,#f97316)"), unsafe_allow_html=True)
-    c5.markdown(stat_card("⏱", "Total Time",       f'{act.get("total_time_minutes",0)}m', "practiced", "linear-gradient(135deg,#0ea5e9,#6366f1)"), unsafe_allow_html=True)
+    c3.markdown(stat_card("📆", "This Week",        act.get("weekly_sessions", 0),    "sessions", "linear-gradient(135deg,#c97b6e,#e8a898)"), unsafe_allow_html=True)
+    c4.markdown(stat_card("🎯", "Total Sessions",   act.get("total_sessions", 0),     "all time",  "linear-gradient(135deg,#b5615a,#f97316)"), unsafe_allow_html=True)
+    c5.markdown(stat_card("⏱", "Total Time",       f'{act.get("total_time_minutes",0)}m', "practiced", "linear-gradient(135deg,#0ea5e9,#c97b6e)"), unsafe_allow_html=True)
 
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
@@ -944,20 +977,20 @@ with tabs[2]:
     # ── Charts row 1: Sessions over time + Accuracy trend ────────────────────
     import plotly.graph_objects as go
 
-    PURPLE_PALETTE = ["#7c3aed", "#a855f7", "#db2777", "#6366f1", "#ec4899",
+    PURPLE_PALETTE = ["#c97b6e", "#e8a898", "#b5615a", "#d4a898", "#e8c4b8",
                       "#0ea5e9", "#f97316", "#10b981", "#f59e0b", "#14b8a6"]
 
     def _chart_layout(fig, title):
         fig.update_layout(
-            title=dict(text=title, font=dict(size=13, color="#4c1d95", family="Inter,sans-serif"), x=0),
+            title=dict(text=title, font=dict(size=13, color="#7a3f38", family="Inter,sans-serif"), x=0),
             paper_bgcolor="white",
             plot_bgcolor="white",
             margin=dict(l=8, r=8, t=36, b=8),
-            font=dict(family="Inter,sans-serif", size=11, color="#4c1d95"),
+            font=dict(family="Inter,sans-serif", size=11, color="#7a3f38"),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
                         font=dict(size=10)),
             xaxis=dict(showgrid=False, zeroline=False, tickfont=dict(size=10)),
-            yaxis=dict(showgrid=True, gridcolor="#f0ebff", zeroline=False, tickfont=dict(size=10)),
+            yaxis=dict(showgrid=True, gridcolor="#fdf0ec", zeroline=False, tickfont=dict(size=10)),
         )
         return fig
 
@@ -983,14 +1016,14 @@ with tabs[2]:
                 fig1.add_trace(go.Scatter(
                     x=all_dates, y=all_counts, mode="lines",
                     fill="tozeroy",
-                    line=dict(color="#7c3aed", width=2),
-                    fillcolor="rgba(124,58,237,0.12)",
+                    line=dict(color="#c97b6e", width=2),
+                    fillcolor="rgba(201,123,110,0.12)",
                     name="Sessions",
                 ))
                 fig1 = _chart_layout(fig1, "Sessions over time (last 60 days)")
                 st.plotly_chart(fig1, use_container_width=True, config={"displayModeBar": False})
         else:
-            st.markdown('<p style="color:#c4b5fd;font-size:.88em;">No session data yet.</p>', unsafe_allow_html=True)
+            st.markdown('<p style="color:#e8c4b8;font-size:.88em;">No session data yet.</p>', unsafe_allow_html=True)
 
     # Chart 2 — Accuracy trend (correct vs wrong per day)
     with ch2:
@@ -1008,13 +1041,13 @@ with tabs[2]:
             ))
             fig2.add_trace(go.Scatter(
                 x=all_ac_dates, y=wrong_vals, mode="lines+markers",
-                name="Wrong", line=dict(color="#db2777", width=2),
+                name="Wrong", line=dict(color="#b5615a", width=2),
                 marker=dict(size=5),
             ))
             fig2 = _chart_layout(fig2, "Accuracy trend — correct vs wrong per day")
             st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
         else:
-            st.markdown('<p style="color:#c4b5fd;font-size:.88em;">No accuracy data yet.</p>', unsafe_allow_html=True)
+            st.markdown('<p style="color:#e8c4b8;font-size:.88em;">No accuracy data yet.</p>', unsafe_allow_html=True)
 
     # ── Charts row 2: Pattern donut + Time per pattern ────────────────────────
     ch3, ch4 = st.columns(2)
@@ -1039,7 +1072,7 @@ with tabs[2]:
             )
             st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar": False})
         else:
-            st.markdown('<p style="color:#c4b5fd;font-size:.88em;">No pattern data yet.</p>', unsafe_allow_html=True)
+            st.markdown('<p style="color:#e8c4b8;font-size:.88em;">No pattern data yet.</p>', unsafe_allow_html=True)
 
     # Chart 4 — Time spent per pattern (horizontal bar, top 10)
     with ch4:
@@ -1052,7 +1085,7 @@ with tabs[2]:
                 x=minutes, y=patterns, orientation="h",
                 marker=dict(
                     color=minutes,
-                    colorscale=[[0, "#ddd6fe"], [0.5, "#a855f7"], [1, "#7c3aed"]],
+                    colorscale=[[0, "#f5d5c8"], [0.5, "#e8a898"], [1, "#c97b6e"]],
                     showscale=False,
                 ),
                 text=[f"{m}m" for m in minutes],
@@ -1067,19 +1100,19 @@ with tabs[2]:
             )
             st.plotly_chart(fig4, use_container_width=True, config={"displayModeBar": False})
         else:
-            st.markdown('<p style="color:#c4b5fd;font-size:.88em;">No time data yet.</p>', unsafe_allow_html=True)
+            st.markdown('<p style="color:#e8c4b8;font-size:.88em;">No time data yet.</p>', unsafe_allow_html=True)
 
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     # ── Recent sessions feed ──────────────────────────────────────────────────
     st.markdown(
         '<div style="font-size:.7em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
-        'color:#7c3aed;margin-bottom:10px;">📋 Recent Sessions</div>',
+        'color:#c97b6e;margin-bottom:10px;">📋 Recent Sessions</div>',
         unsafe_allow_html=True
     )
     recent = act.get("recent_sessions", [])
     if not recent:
-        st.markdown('<p style="color:#c4b5fd;font-size:.88em;">No sessions yet — start practicing!</p>', unsafe_allow_html=True)
+        st.markdown('<p style="color:#e8c4b8;font-size:.88em;">No sessions yet — start practicing!</p>', unsafe_allow_html=True)
     else:
         feed_col, _ = st.columns([0.6, 0.4])
         with feed_col:
@@ -1093,7 +1126,7 @@ with tabs[2]:
                 except:
                     day_fmt = day
                 st.markdown(
-                    f'<div style="font-size:.72em;font-weight:700;color:#a78bfa;'
+                    f'<div style="font-size:.72em;font-weight:700;color:#d4a898;'
                     f'letter-spacing:.5px;text-transform:uppercase;margin:10px 0 5px;">{day_fmt}</div>',
                     unsafe_allow_html=True
                 )
@@ -1107,12 +1140,12 @@ with tabs[2]:
                     title   = s.get("question_title", "")
                     st.markdown(
                         f'<div style="display:flex;align-items:center;gap:10px;background:#fff;'
-                        f'border:1px solid #ede9fe;border-radius:10px;padding:9px 14px;margin-bottom:5px;">'
+                        f'border:1px solid #f0ddd8;border-radius:10px;padding:9px 14px;margin-bottom:5px;">'
                         f'  <span style="background:{ok_bg};color:{ok_col};border-radius:6px;'
                         f'    padding:2px 7px;font-size:.7em;font-weight:700;">{ok_icon}</span>'
                         f'  <div style="flex:1;min-width:0;">'
                         f'    <div style="font-weight:600;font-size:.84em;color:#1e1b4b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{title}</div>'
-                        f'    <div style="font-size:.72em;color:#a78bfa;margin-top:1px;">{pattern}</div>'
+                        f'    <div style="font-size:.72em;color:#d4a898;margin-top:1px;">{pattern}</div>'
                         f'  </div>'
                         f'  <span style="font-size:.75em;color:#6b7280;white-space:nowrap;">⏱ {mins}m</span>'
                         f'</div>',
@@ -1126,7 +1159,7 @@ with tabs[2]:
 with tabs[3]:
     st.markdown(
         '<p style="font-size:.7em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
-        'color:#7c3aed;margin-bottom:16px;">Practice Schedule</p>',
+        'color:#c97b6e;margin-bottom:16px;">Practice Schedule</p>',
         unsafe_allow_html=True
     )
 
@@ -1150,8 +1183,8 @@ with tabs[3]:
     DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
     st.markdown(
-        '<div style="background:#fff;border:1.5px solid #ede9fe;border-radius:16px;'
-        'padding:24px 28px;max-width:460px;box-shadow:0 2px 8px rgba(124,58,237,.07);">',
+        '<div style="background:#fff;border:1.5px solid #f0ddd8;border-radius:16px;'
+        'padding:24px 28px;max-width:460px;box-shadow:0 2px 8px rgba(201,123,110,.07);">',
         unsafe_allow_html=True
     )
     st.markdown(
@@ -1196,7 +1229,7 @@ with tabs[3]:
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
     st.markdown(
         '<p style="font-size:.7em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
-        'color:#7c3aed;margin-bottom:16px;">Notification Settings</p>',
+        'color:#c97b6e;margin-bottom:16px;">Notification Settings</p>',
         unsafe_allow_html=True
     )
 
@@ -1215,8 +1248,8 @@ with tabs[3]:
         st.session_state.notif_settings_loaded = True
 
     st.markdown(
-        '<div style="background:#fff;border:1.5px solid #ede9fe;border-radius:16px;'
-        'padding:24px 28px;max-width:520px;box-shadow:0 2px 8px rgba(124,58,237,.07);">',
+        '<div style="background:#fff;border:1.5px solid #f0ddd8;border-radius:16px;'
+        'padding:24px 28px;max-width:520px;box-shadow:0 2px 8px rgba(201,123,110,.07);">',
         unsafe_allow_html=True
     )
 
@@ -1258,9 +1291,9 @@ with tabs[3]:
             placeholder="e.g. 123456789",
         )
         st.markdown(
-            '<div style="background:#2a1050;border-left:3px solid #a855f7;border-radius:0 8px 8px 0;'
-            'padding:10px 14px;font-size:.76em;color:#e9d5ff;line-height:1.8;margin-top:2px;">'
-            '<b style="color:#c084fc;">How to find your Chat ID:</b><br>'
+            '<div style="background:#242838;border-left:3px solid #e8a898;border-radius:0 8px 8px 0;'
+            'padding:10px 14px;font-size:.76em;color:#f0e8e5;line-height:1.8;margin-top:2px;">'
+            '<b style="color:#e8a898;">How to find your Chat ID:</b><br>'
             '1. Open Telegram → search <b>@dsa_planner_bot</b> → send <code>/start</code><br>'
             '2. Then open <b>@userinfobot</b> → send <code>/start</code><br>'
             '3. It replies with <b>Your user ID: 123456789</b> — paste that number above'
@@ -1315,11 +1348,11 @@ with tabs[PATTERNS_IDX]:
     def _sec(title):
         st.markdown(
             f'<p style="font-size:.62em;font-weight:700;letter-spacing:1px;'
-            f'text-transform:uppercase;color:#7c3aed;margin:18px 0 6px;">{title}</p>',
+            f'text-transform:uppercase;color:#c97b6e;margin:18px 0 6px;">{title}</p>',
             unsafe_allow_html=True,
         )
 
-    def _bullets(items, color="#4c1d95"):
+    def _bullets(items, color="#7a3f38"):
         html = "".join(
             f'<li style="margin-bottom:4px;color:#374151;">{it}</li>' for it in items
         )
@@ -1330,11 +1363,11 @@ with tabs[PATTERNS_IDX]:
 
     def _overview(tagline, mental_model, complexity):
         st.markdown(
-            f'<div style="background:linear-gradient(135deg,#ede9fe,#fce7f3);'
-            f'border:1.5px solid #c4b5fd;border-radius:14px;padding:16px 20px;margin-bottom:6px;">'
-            f'<div style="font-size:.82em;font-style:italic;color:#5b21b6;margin-bottom:8px;">{tagline}</div>'
+            f'<div style="background:linear-gradient(135deg,#f0ddd8,#fde8e3);'
+            f'border:1.5px solid #e8c4b8;border-radius:14px;padding:16px 20px;margin-bottom:6px;">'
+            f'<div style="font-size:.82em;font-style:italic;color:#8b4a42;margin-bottom:8px;">{tagline}</div>'
             f'<div style="font-size:.88em;color:#1e1b4b;line-height:1.7;">{mental_model}</div>'
-            f'<div style="margin-top:10px;font-size:.78em;color:#7c3aed;font-weight:600;">'
+            f'<div style="margin-top:10px;font-size:.78em;color:#c97b6e;font-weight:600;">'
             f'⏱ Typical complexity: {complexity}</div>'
             f'</div>',
             unsafe_allow_html=True,
@@ -1348,7 +1381,7 @@ with tabs[PATTERNS_IDX]:
             st.code(code, language="python")
             if insight:
                 st.markdown(
-                    f'<div style="background:#fdf4ff;border-left:3px solid #a855f7;'
+                    f'<div style="background:#fdf5f2;border-left:3px solid #e8a898;'
                     f'border-radius:0 8px 8px 0;padding:8px 12px;font-size:.83em;'
                     f'color:#581c87;line-height:1.6;margin-top:6px;">💡 {insight}</div>',
                     unsafe_allow_html=True,
@@ -1364,21 +1397,21 @@ with tabs[PATTERNS_IDX]:
         saved_memo  = saved.get("memory_techniques", "")
         saved_notes = saved.get("notes", "")
 
-        st.markdown("<hr style='border:none;border-top:1px solid #ede9fe;margin:20px 0 4px;'>", unsafe_allow_html=True)
+        st.markdown("<hr style='border:none;border-top:1px solid #f0ddd8;margin:20px 0 4px;'>", unsafe_allow_html=True)
 
         # ── Memory Tricks ─────────────────────────────────────────────────────
         _sec("🧠 Memory Tricks")
 
         if saved_memo:
             st.markdown(
-                f'<div style="background:#fdf4ff;border:1.5px solid #e9d5ff;border-radius:12px;'
+                f'<div style="background:#fdf5f2;border:1.5px solid #f0e8e5;border-radius:12px;'
                 f'padding:12px 16px;font-size:.86em;color:#3b0764;line-height:1.8;'
                 f'white-space:pre-wrap;">{saved_memo}</div>',
                 unsafe_allow_html=True,
             )
         else:
             st.markdown(
-                '<p style="font-size:.82em;color:#a78bfa;font-style:italic;">No memory tricks saved yet — generate some below.</p>',
+                '<p style="font-size:.82em;color:#d4a898;font-style:italic;">No memory tricks saved yet — generate some below.</p>',
                 unsafe_allow_html=True,
             )
 
@@ -1441,27 +1474,27 @@ with tabs[PATTERNS_IDX]:
                 if msg["role"] == "user":
                     bubbles += (
                         f'<div style="display:flex;justify-content:flex-end;margin-bottom:6px;">'
-                        f'<div style="background:#4c1d95;color:#e9d5ff;border-radius:14px 14px 2px 14px;'
+                        f'<div style="background:#7a3f38;color:#f0e8e5;border-radius:14px 14px 2px 14px;'
                         f'padding:7px 12px;font-size:.82em;max-width:80%;line-height:1.5;">'
                         f'{msg["content"]}</div></div>'
                     )
                 else:
                     bubbles += (
                         f'<div style="display:flex;justify-content:flex-start;margin-bottom:6px;">'
-                        f'<div style="background:#f5f3ff;border:1px solid #c4b5fd;color:#1e1b4b;'
+                        f'<div style="background:#fdf5f2;border:1px solid #e8c4b8;color:#1e1b4b;'
                         f'border-radius:14px 14px 14px 2px;'
                         f'padding:7px 12px;font-size:.82em;max-width:80%;line-height:1.5;white-space:pre-wrap;">'
                         f'{msg["content"]}</div></div>'
                     )
             st.markdown(
-                f'<div style="background:#fafafa;border:1.5px solid #ede9fe;border-radius:12px;'
+                f'<div style="background:#fafafa;border:1.5px solid #f0ddd8;border-radius:12px;'
                 f'padding:12px;margin-bottom:8px;max-height:260px;overflow-y:auto;">'
                 f'{bubbles}</div>',
                 unsafe_allow_html=True,
             )
         else:
             st.markdown(
-                f'<p style="font-size:.8em;color:#a78bfa;font-style:italic;margin-bottom:6px;">'
+                f'<p style="font-size:.8em;color:#d4a898;font-style:italic;margin-bottom:6px;">'
                 f'Ask anything about the {pattern_name} pattern — concepts, edge cases, when to use it…</p>',
                 unsafe_allow_html=True,
             )
@@ -2590,7 +2623,7 @@ if has_github and JOURNAL_IDX is not None:
             # Stats bar
             st.markdown(
                 f'<div style="display:flex;gap:20px;align-items:center;'
-                f'background:#fff;border:1.5px solid #ede9fe;border-radius:12px;'
+                f'background:#fff;border:1.5px solid #f0ddd8;border-radius:12px;'
                 f'padding:8px 16px;margin:6px 0 10px;flex-wrap:wrap;">'
                 f'<span style="font-size:.78em;color:#6b7280;">'
                 f'  <b style="color:#1e1b4b;">{total}</b> session{"s" if total!=1 else ""}'
@@ -2603,8 +2636,8 @@ if has_github and JOURNAL_IDX is not None:
                 f'<span style="font-size:.78em;color:#6b7280;">'
                 f'  avg ⏱ {avg_min}m {avg_s}s'
                 f'</span>'
-                f'<span style="margin-left:auto;font-size:.72em;color:#a78bfa;">'
-                f'  <a href="{repo_url}" target="_blank" style="color:#a78bfa;text-decoration:none;">'
+                f'<span style="margin-left:auto;font-size:.72em;color:#d4a898;">'
+                f'  <a href="{repo_url}" target="_blank" style="color:#d4a898;text-decoration:none;">'
                 f'  🔗 {gh_user}/dsa-planner-data</a>'
                 f'</span>'
                 f'</div>',
@@ -2635,9 +2668,9 @@ if has_github and JOURNAL_IDX is not None:
                     st.markdown(
                         f'<div style="display:flex;align-items:center;gap:8px;'
                         f'margin:14px 0 4px;">'
-                        f'<span style="font-size:.68em;font-weight:700;color:#7c3aed;'
+                        f'<span style="font-size:.68em;font-weight:700;color:#c97b6e;'
                         f'white-space:nowrap;">📅 {d_fmt}</span>'
-                        f'<div style="flex:1;height:1px;background:#ede9fe;"></div>'
+                        f'<div style="flex:1;height:1px;background:#f0ddd8;"></div>'
                         f'</div>',
                         unsafe_allow_html=True,
                     )
@@ -2667,7 +2700,7 @@ if has_github and JOURNAL_IDX is not None:
                     with lc:
                         st.markdown(
                             '<p style="font-size:.62em;font-weight:700;letter-spacing:.8px;'
-                            'text-transform:uppercase;color:#7c3aed;margin:0 0 4px;">💡 Logic</p>',
+                            'text-transform:uppercase;color:#c97b6e;margin:0 0 4px;">💡 Logic</p>',
                             unsafe_allow_html=True)
                         if logic:
                             st.markdown(
@@ -2681,7 +2714,7 @@ if has_github and JOURNAL_IDX is not None:
                     with rc:
                         st.markdown(
                             '<p style="font-size:.62em;font-weight:700;letter-spacing:.8px;'
-                            'text-transform:uppercase;color:#7c3aed;margin:0 0 4px;">💻 Code</p>',
+                            'text-transform:uppercase;color:#c97b6e;margin:0 0 4px;">💻 Code</p>',
                             unsafe_allow_html=True)
                         if code:
                             st.code(code, language="python")
@@ -2691,12 +2724,12 @@ if has_github and JOURNAL_IDX is not None:
                     # Gap analysis card (full width, below)
                     if gap_text:
                         st.markdown(
-                            f'<div style="background:linear-gradient(135deg,#1a0533,#2d1457);'
-                            f'border-left:3px solid #f472b6;border-radius:0 10px 10px 0;'
+                            f'<div style="background:linear-gradient(135deg,#1a0533,#252840);'
+                            f'border-left:3px solid #c97b6e;border-radius:0 10px 10px 0;'
                             f'padding:10px 14px;margin-top:8px;">'
                             f'<div style="font-size:.6em;font-weight:700;letter-spacing:1px;'
-                            f'text-transform:uppercase;color:#f472b6;margin-bottom:6px;">🔍 Gap Analysis</div>'
-                            f'<div style="font-size:.82em;color:#fce7f3;line-height:1.7;">{gap_text}</div>'
+                            f'text-transform:uppercase;color:#c97b6e;margin-bottom:6px;">🔍 Gap Analysis</div>'
+                            f'<div style="font-size:.82em;color:#fde8e3;line-height:1.7;">{gap_text}</div>'
                             f'</div>',
                             unsafe_allow_html=True,
                         )
@@ -2733,7 +2766,7 @@ if has_github and JOURNAL_IDX is not None:
                     st.session_state.jrn_page -= 1; st.rerun()
                 pg3.markdown(
                     f'<div style="text-align:center;padding-top:6px;font-size:.82em;'
-                    f'color:#7c3aed;font-weight:600;">Page {page+1} / {total_pages}</div>',
+                    f'color:#c97b6e;font-weight:600;">Page {page+1} / {total_pages}</div>',
                     unsafe_allow_html=True)
                 if pg4.button("Next ▶",  use_container_width=True, disabled=(page >= total_pages-1)):
                     st.session_state.jrn_page += 1; st.rerun()
@@ -2747,11 +2780,11 @@ if has_github and JOURNAL_IDX is not None:
 if is_admin and ADMIN_IDX is not None:
     with tabs[ADMIN_IDX]:
         st.markdown(
-            '<div style="background:#fff;border:2px dashed #c4b5fd;border-radius:16px;'
+            '<div style="background:#fff;border:2px dashed #e8c4b8;border-radius:16px;'
             'padding:28px 28px 12px;text-align:center;margin-bottom:16px;">'
             '<div style="font-size:1.5em;margin-bottom:6px;">📄</div>'
             '<div style="font-weight:700;font-size:1.05em;color:#3b0764;margin-bottom:4px;">Upload Markdown File</div>'
-            '<div style="font-size:.85em;color:#7c3aed;margin-bottom:8px;">Parse DSA questions directly from your notes</div>'
+            '<div style="font-size:.85em;color:#c97b6e;margin-bottom:8px;">Parse DSA questions directly from your notes</div>'
             '</div>',
             unsafe_allow_html=True
         )
@@ -2799,7 +2832,7 @@ if st.session_state.get("view_last_qid") and not st.session_state.get("active_qi
 
         if rec is None:
             st.markdown(
-                '<div style="font-size:.88em;color:#f472b6;padding:20px 0;">'
+                '<div style="font-size:.88em;color:#c97b6e;padding:20px 0;">'
                 '📭 No practice record found for this question yet.<br>'
                 'Hit <b>Practice →</b> to create your first session!</div>',
                 unsafe_allow_html=True,
@@ -2811,8 +2844,8 @@ if st.session_state.get("view_last_qid") and not st.session_state.get("active_qi
             # Header
             st.markdown(
                 f'<div style="font-size:1em;font-weight:800;padding:6px 0 6px;'
-                f'border-bottom:1px solid #2d1457;margin-bottom:10px;'
-                f'background:linear-gradient(90deg,#c084fc,#f472b6);'
+                f'border-bottom:1px solid #252840;margin-bottom:10px;'
+                f'background:linear-gradient(90deg,#e8a898,#c97b6e);'
                 f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;">'
                 f'📖 {rec["question_title"]}</div>',
                 unsafe_allow_html=True,
@@ -2823,34 +2856,34 @@ if st.session_state.get("view_last_qid") and not st.session_state.get("active_qi
             secs_lr = (rec.get("time_taken") or 0) % 60
             ok_lr   = rec.get("correct", True)
             st.markdown(
-                f'<div style="background:#2a1050;border:1px solid #3d1a72;border-radius:12px;'
+                f'<div style="background:#242838;border:1px solid #2d3348;border-radius:12px;'
                 f'padding:10px 14px;margin-bottom:12px;display:flex;gap:16px;flex-wrap:wrap;">'
-                f'  <span style="font-size:.78em;color:#a78bfa;">📅 {rec.get("date","—")}</span>'
+                f'  <span style="font-size:.78em;color:#d4a898;">📅 {rec.get("date","—")}</span>'
                 f'  <span style="font-size:.78em;color:{"#86efac" if ok_lr else "#f9a8d4"};">'
                 f'    {"✅ Correct" if ok_lr else "❌ Needs Work"}</span>'
-                f'  <span style="font-size:.78em;color:#a78bfa;">⏱ {mins_lr}m {secs_lr}s</span>'
-                f'  <span style="font-size:.78em;color:#7c3aed;">{rec.get("pattern","")}</span>'
+                f'  <span style="font-size:.78em;color:#d4a898;">⏱ {mins_lr}m {secs_lr}s</span>'
+                f'  <span style="font-size:.78em;color:#c97b6e;">{rec.get("pattern","")}</span>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
 
             # Editable fields
-            st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:10px 0 4px;">💡 Logic / Approach</p>', unsafe_allow_html=True)
+            st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#9b5a52;margin:10px 0 4px;">💡 Logic / Approach</p>', unsafe_allow_html=True)
             lr_logic = st.text_area("lr_logic", value=rec.get("logic", ""), key="lr_logic_input",
                                     height=160, label_visibility="collapsed",
                                     placeholder="Describe your approach step by step...")
 
-            st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">💻 Code</p>', unsafe_allow_html=True)
+            st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#9b5a52;margin:14px 0 4px;">💻 Code</p>', unsafe_allow_html=True)
             lr_code = st.text_area("lr_code", value=rec.get("code", ""), key="lr_code_input",
                                    height=240, label_visibility="collapsed",
                                    placeholder="Your solution code...")
 
-            st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">📝 Notes</p>', unsafe_allow_html=True)
+            st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#9b5a52;margin:14px 0 4px;">📝 Notes</p>', unsafe_allow_html=True)
             lr_notes = st.text_area("lr_notes", value=rec.get("notes", "") or "", key="lr_notes_input",
                                     height=110, label_visibility="collapsed",
                                     placeholder="Key insight, pattern trick, edge case to remember...")
 
-            st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">🔍 My Gap Analysis</p>', unsafe_allow_html=True)
+            st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#9b5a52;margin:14px 0 4px;">🔍 My Gap Analysis</p>', unsafe_allow_html=True)
             lr_gap = st.text_area("lr_gap", value=rec.get("my_gap_analysis", "") or "", key="lr_gap_input",
                                   height=110, label_visibility="collapsed",
                                   placeholder="Where did my thinking break down?")
@@ -2915,8 +2948,8 @@ if st.session_state.active_qid:
             # Header
             st.markdown(
                 f'<div style="font-size:1em;font-weight:800;padding:6px 0 10px;'
-                f'border-bottom:1px solid #2d1457;margin-bottom:12px;'
-                f'background:linear-gradient(90deg,#c084fc,#f472b6);'
+                f'border-bottom:1px solid #252840;margin-bottom:12px;'
+                f'background:linear-gradient(90deg,#e8a898,#c97b6e);'
                 f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;">'
                 f'📝 {q["title"]}</div>',
                 unsafe_allow_html=True
@@ -2924,12 +2957,12 @@ if st.session_state.active_qid:
 
             # Timer
             st.markdown(
-                f'<div style="background:linear-gradient(135deg,#2d1457,#4a1060);'
-                f'border:1px solid #5b21b6;border-radius:14px;padding:10px 14px;'
+                f'<div style="background:linear-gradient(135deg,#252840,#2d3348);'
+                f'border:1px solid #8b4a42;border-radius:14px;padding:10px 14px;'
                 f'text-align:center;margin-bottom:10px;">'
-                f'<div style="font-size:.6em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#a78bfa;">Session Time</div>'
+                f'<div style="font-size:.6em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#d4a898;">Session Time</div>'
                 f'<div style="font-size:2em;font-weight:800;letter-spacing:3px;'
-                f'background:linear-gradient(135deg,#c084fc,#f472b6);'
+                f'background:linear-gradient(135deg,#e8a898,#c97b6e);'
                 f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;">'
                 f'{mins:02d}:{secs:02d}</div>'
                 f'</div>',
@@ -2939,17 +2972,17 @@ if st.session_state.active_qid:
             # Stats grid
             st.markdown(
                 f'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;">'
-                f'  <div style="background:#2a1050;border:1px solid #3d1a72;border-radius:10px;padding:8px 6px;text-align:center;">'
-                f'    <div style="font-size:.58em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#7c3aed;">Accuracy</div>'
+                f'  <div style="background:#242838;border:1px solid #2d3348;border-radius:10px;padding:8px 6px;text-align:center;">'
+                f'    <div style="font-size:.58em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#c97b6e;">Accuracy</div>'
                 f'    <div style="font-size:.95em;font-weight:700;color:{acc_color};margin-top:2px;">{acc_val:.0f}%</div>'
                 f'  </div>'
-                f'  <div style="background:#2a1050;border:1px solid #3d1a72;border-radius:10px;padding:8px 6px;text-align:center;">'
-                f'    <div style="font-size:.58em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#7c3aed;">Interval</div>'
-                f'    <div style="font-size:.95em;font-weight:700;color:#e9d5ff;margin-top:2px;">{iv_val}d</div>'
+                f'  <div style="background:#242838;border:1px solid #2d3348;border-radius:10px;padding:8px 6px;text-align:center;">'
+                f'    <div style="font-size:.58em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#c97b6e;">Interval</div>'
+                f'    <div style="font-size:.95em;font-weight:700;color:#f0e8e5;margin-top:2px;">{iv_val}d</div>'
                 f'  </div>'
-                f'  <div style="background:#2a1050;border:1px solid #3d1a72;border-radius:10px;padding:8px 6px;text-align:center;">'
-                f'    <div style="font-size:.58em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#7c3aed;">EF</div>'
-                f'    <div style="font-size:.95em;font-weight:700;color:#e9d5ff;margin-top:2px;">{ef_val:.2f}</div>'
+                f'  <div style="background:#242838;border:1px solid #2d3348;border-radius:10px;padding:8px 6px;text-align:center;">'
+                f'    <div style="font-size:.58em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#c97b6e;">EF</div>'
+                f'    <div style="font-size:.95em;font-weight:700;color:#f0e8e5;margin-top:2px;">{ef_val:.2f}</div>'
                 f'  </div>'
                 f'</div>',
                 unsafe_allow_html=True
@@ -2958,19 +2991,19 @@ if st.session_state.active_qid:
             if q.get('suggestions'):
                 sugg_html = q["suggestions"].replace('\n', '<br>')
                 st.markdown(
-                    f'<div style="background:linear-gradient(135deg,#2d1457,#4a1060);'
-                    f'border-left:3px solid #c084fc;border-radius:0 10px 10px 0;'
-                    f'padding:10px 14px;font-size:.8em;color:#e9d5ff;margin-bottom:8px;line-height:1.7;">'
+                    f'<div style="background:linear-gradient(135deg,#252840,#2d3348);'
+                    f'border-left:3px solid #e8a898;border-radius:0 10px 10px 0;'
+                    f'padding:10px 14px;font-size:.8em;color:#f0e8e5;margin-bottom:8px;line-height:1.7;">'
                     f'<div style="font-size:.65em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
-                    f'color:#c084fc;margin-bottom:6px;">💡 AI Analysis</div>'
+                    f'color:#e8a898;margin-bottom:6px;">💡 AI Analysis</div>'
                     f'{sugg_html}</div>',
                     unsafe_allow_html=True
                 )
             if q.get('my_gap_analysis'):
                 st.markdown(
-                    f'<div style="background:#2a1050;border-left:3px solid #f472b6;'
+                    f'<div style="background:#242838;border-left:3px solid #c97b6e;'
                     f'border-radius:0 10px 10px 0;padding:7px 12px;font-size:.8em;'
-                    f'color:#fce7f3;margin-bottom:8px;line-height:1.6;">'
+                    f'color:#fde8e3;margin-bottom:8px;line-height:1.6;">'
                     f'🔍 {q["my_gap_analysis"]}</div>',
                     unsafe_allow_html=True
                 )
@@ -2989,14 +3022,14 @@ if st.session_state.active_qid:
                             if stripped in ("PROBLEM", "EXAMPLE 1", "EXAMPLE 2", "CONSTRAINTS"):
                                 out.append(
                                     f'<div style="font-size:.6em;font-weight:700;letter-spacing:1px;'
-                                    f'text-transform:uppercase;color:#7c3aed;margin:12px 0 4px;">{stripped}</div>'
+                                    f'text-transform:uppercase;color:#c97b6e;margin:12px 0 4px;">{stripped}</div>'
                                 )
                             elif stripped.startswith(("Input:", "Output:", "Explanation:")):
                                 label, _, rest = stripped.partition(":")
                                 out.append(
                                     f'<div style="font-size:.83em;line-height:1.6;">'
-                                    f'<b style="color:#a78bfa;">{label}:</b>'
-                                    f'<code style="background:#2d1457;color:#e9d5ff;padding:1px 6px;'
+                                    f'<b style="color:#d4a898;">{label}:</b>'
+                                    f'<code style="background:#252840;color:#f0e8e5;padding:1px 6px;'
                                     f'border-radius:4px;font-size:.95em;">{rest.strip()}</code></div>'
                                 )
                             elif stripped.startswith("•"):
@@ -3008,7 +3041,7 @@ if st.session_state.active_qid:
                         return "".join(out)
 
                     st.markdown(
-                        f'<div style="background:#fff;border:1.5px solid #ede9fe;border-radius:12px;'
+                        f'<div style="background:#fff;border:1.5px solid #f0ddd8;border-radius:12px;'
                         f'padding:14px 18px;">{_render_description(existing_desc)}</div>',
                         unsafe_allow_html=True,
                     )
@@ -3030,7 +3063,7 @@ if st.session_state.active_qid:
                             except Exception as e:
                                 st.error(f"Error: {e}")
                     st.markdown(
-                        '<p style="font-size:.8em;color:#a78bfa;font-style:italic;">'
+                        '<p style="font-size:.8em;color:#d4a898;font-style:italic;">'
                         'Click to auto-generate a full problem description with examples.</p>',
                         unsafe_allow_html=True,
                     )
@@ -3046,7 +3079,7 @@ if st.session_state.active_qid:
                     st.session_state[hint_key] = True
                 if st.session_state[hint_key]:
                     st.markdown(
-                        f'<div style="background:#2a1050;border-left:3px solid #f59e0b;'
+                        f'<div style="background:#242838;border-left:3px solid #f59e0b;'
                         f'border-radius:0 10px 10px 0;padding:10px 14px;font-size:.85em;'
                         f'color:#fef3c7;margin-bottom:10px;line-height:1.7;">'
                         f'<div style="font-size:.6em;font-weight:700;letter-spacing:.8px;'
@@ -3080,16 +3113,16 @@ if st.session_state.active_qid:
             col_left, col_right = st.columns(2, gap="medium")
 
             with col_left:
-                st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">💡 Logic / Approach</p>', unsafe_allow_html=True)
+                st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#9b5a52;margin:14px 0 4px;">💡 Logic / Approach</p>', unsafe_allow_html=True)
                 new_logic = st.text_area("logic", value=q.get('logic',''), key="logic_input", height=220, label_visibility="collapsed", placeholder="Describe your approach step by step — what data structure, why this algorithm, what edge cases you considered...")
 
-                st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">📝 Notes</p>', unsafe_allow_html=True)
+                st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#9b5a52;margin:14px 0 4px;">📝 Notes</p>', unsafe_allow_html=True)
                 new_notes = st.text_area("notes", value=q.get('notes') or '', key="notes_input", height=140, label_visibility="collapsed", placeholder="Key insight, pattern trick, edge case to remember...")
 
             with col_right:
                 st.markdown(
                     '<p style="font-size:.62em;font-weight:700;letter-spacing:1px;'
-                    'text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">'
+                    'text-transform:uppercase;color:#9b5a52;margin:14px 0 4px;">'
                     '💻 Code &nbsp;<span style="font-weight:400;color:#9ca3af;font-size:.85em;text-transform:none;">'
                     '(Python)</span></p>',
                     unsafe_allow_html=True,
@@ -3117,7 +3150,7 @@ if st.session_state.active_qid:
                         placeholder="# Write your solution here…",
                     )
 
-                st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6d28d9;margin:14px 0 4px;">🔍 My Gap Analysis</p>', unsafe_allow_html=True)
+                st.markdown('<p style="font-size:.62em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#9b5a52;margin:14px 0 4px;">🔍 My Gap Analysis</p>', unsafe_allow_html=True)
                 new_gap = st.text_area("gap", value=q.get('my_gap_analysis') or '', key="gap_input", height=140, label_visibility="collapsed", placeholder="Where did my thinking break down? What would I do differently?")
 
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
@@ -3151,7 +3184,7 @@ if st.session_state.active_qid:
             st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
             st.markdown(
                 '<div style="font-size:.6em;font-weight:700;letter-spacing:1px;'
-                'text-transform:uppercase;color:#a78bfa;margin-bottom:6px;">'
+                'text-transform:uppercase;color:#d4a898;margin-bottom:6px;">'
                 '🤖 Ask AI Tutor</div>',
                 unsafe_allow_html=True,
             )
@@ -3178,14 +3211,14 @@ if st.session_state.active_qid:
                     if msg["role"] == "user":
                         bubbles += (
                             f'<div style="display:flex;justify-content:flex-end;margin-bottom:7px;">'
-                            f'<div style="background:#4c1d95;color:#e9d5ff;'
+                            f'<div style="background:#7a3f38;color:#f0e8e5;'
                             f'border-radius:14px 14px 2px 14px;'
                             f'padding:8px 13px;font-size:.8em;max-width:82%;line-height:1.55;">'
                             f'{_fmt_bubble(msg["content"])}</div></div>'
                         )
                     else:
-                        bubble_bg    = "#1a3a2a" if is_variation else "#2a1050"
-                        bubble_border = "#22c55e" if is_variation else "#5b21b6"
+                        bubble_bg    = "#1a3a2a" if is_variation else "#242838"
+                        bubble_border = "#22c55e" if is_variation else "#8b4a42"
                         bubble_label  = '<span style="font-size:.65em;color:#86efac;font-weight:700;display:block;margin-bottom:4px;">🔀 VARIATIONS</span>' if is_variation else ""
                         bubbles += (
                             f'<div style="display:flex;justify-content:flex-start;margin-bottom:7px;">'
@@ -3195,7 +3228,7 @@ if st.session_state.active_qid:
                             f'{bubble_label}{_fmt_bubble(msg["content"])}</div></div>'
                         )
                 st.markdown(
-                    f'<div style="background:#1a0a2e;border:1px solid #3d1a72;border-radius:12px;'
+                    f'<div style="background:#151827;border:1px solid #2d3348;border-radius:12px;'
                     f'padding:10px;margin-bottom:8px;max-height:280px;overflow-y:auto;">'
                     f'{bubbles}</div>',
                     unsafe_allow_html=True,
@@ -3297,9 +3330,9 @@ if st.session_state.active_qid:
 
                 if latest_vars:
                     st.markdown(
-                        '<hr style="border:none;border-top:1px solid #3d1a72;margin:14px 0 10px;">'
+                        '<hr style="border:none;border-top:1px solid #2d3348;margin:14px 0 10px;">'
                         '<div style="font-size:.6em;font-weight:700;letter-spacing:1px;'
-                        'text-transform:uppercase;color:#a78bfa;margin-bottom:8px;">📝 Practice a Variation</div>',
+                        'text-transform:uppercase;color:#d4a898;margin-bottom:8px;">📝 Practice a Variation</div>',
                         unsafe_allow_html=True,
                     )
 
@@ -3321,9 +3354,9 @@ if st.session_state.active_qid:
                         desc_html = _re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', desc_html)
                         desc_html = desc_html.replace("🔑 Twist:", '<span style="color:#fbbf24;font-weight:700;">🔑 Twist:</span>')
                         st.markdown(
-                            f'<div style="background:#1a0a2e;border:1.5px solid #5b21b6;'
+                            f'<div style="background:#151827;border:1.5px solid #8b4a42;'
                             f'border-radius:12px;padding:12px 16px;font-size:.83em;'
-                            f'color:#e9d5ff;line-height:1.75;margin-bottom:10px;">'
+                            f'color:#f0e8e5;line-height:1.75;margin-bottom:10px;">'
                             f'{desc_html}</div>',
                             unsafe_allow_html=True,
                         )
@@ -3333,7 +3366,7 @@ if st.session_state.active_qid:
                         with vl:
                             st.markdown(
                                 '<p style="font-size:.6em;font-weight:700;letter-spacing:1px;'
-                                'text-transform:uppercase;color:#6d28d9;margin:6px 0 3px;">💡 Approach / Notes</p>',
+                                'text-transform:uppercase;color:#9b5a52;margin:6px 0 3px;">💡 Approach / Notes</p>',
                                 unsafe_allow_html=True,
                             )
                             var_notes = st.text_area(
@@ -3345,7 +3378,7 @@ if st.session_state.active_qid:
                         with vr:
                             st.markdown(
                                 '<p style="font-size:.6em;font-weight:700;letter-spacing:1px;'
-                                'text-transform:uppercase;color:#6d28d9;margin:6px 0 3px;">💻 Code</p>',
+                                'text-transform:uppercase;color:#9b5a52;margin:6px 0 3px;">💻 Code</p>',
                                 unsafe_allow_html=True,
                             )
                             if _ACE_AVAILABLE:
@@ -3405,7 +3438,7 @@ if st.session_state.active_qid:
                             verd_col = "#86efac" if corr else "#f9a8d4"
                             verd_txt = "✅ Correct" if corr else "❌ Needs Work"
                             st.markdown(
-                                f'<div style="background:#2a1050;border:1px solid #3d1a72;'
+                                f'<div style="background:#242838;border:1px solid #2d3348;'
                                 f'border-radius:12px;padding:12px 16px;margin-top:6px;">'
                                 f'<div style="display:flex;justify-content:space-between;'
                                 f'align-items:center;margin-bottom:8px;">'
@@ -3414,7 +3447,7 @@ if st.session_state.active_qid:
                                 f'  border-radius:20px;padding:2px 10px;font-size:.82em;'
                                 f'  font-weight:800;color:{acc_col};">🎯 {acc:.0f}%</span>'
                                 f'</div>'
-                                f'<div style="font-size:.82em;color:#e9d5ff;line-height:1.7;">{fb}</div>'
+                                f'<div style="font-size:.82em;color:#f0e8e5;line-height:1.7;">{fb}</div>'
                                 f'</div>',
                                 unsafe_allow_html=True,
                             )
@@ -3443,30 +3476,30 @@ if st.session_state.active_qid:
 
                     sugg_html = (q.get("suggestions") or "").replace('\n', '<br>')
                     st.markdown(
-                        f'<div style="background:#2a1050;border:1px solid #3d1a72;'
+                        f'<div style="background:#242838;border:1px solid #2d3348;'
                         f'border-radius:14px;padding:14px;margin-top:10px;">'
                         f'<div style="font-size:.6em;font-weight:700;letter-spacing:1px;'
-                        f'text-transform:uppercase;color:#a855f7;margin-bottom:8px;">🤖 AI Analysis</div>'
+                        f'text-transform:uppercase;color:#e8a898;margin-bottom:8px;">🤖 AI Analysis</div>'
                         f'<div style="font-weight:700;font-size:.95em;color:{verdict_color};'
                         f'margin-bottom:10px;">{verdict_text}</div>'
                         + (
                             f'<div style="display:flex;justify-content:space-between;'
-                            f'padding:5px 0;border-bottom:1px solid #3d1a72;font-size:.8em;margin-bottom:2px;">'
+                            f'padding:5px 0;border-bottom:1px solid #2d3348;font-size:.8em;margin-bottom:2px;">'
                             f'<span style="color:#9ca3af;">Accuracy</span>'
                             f'<span style="color:{acc_color};font-weight:700;">{accuracy}%</span></div>'
                             if accuracy is not None else ""
                         )
                         + (
                             f'<div style="display:flex;justify-content:space-between;'
-                            f'padding:5px 0;border-bottom:1px solid #3d1a72;font-size:.8em;margin-bottom:8px;">'
+                            f'padding:5px 0;border-bottom:1px solid #2d3348;font-size:.8em;margin-bottom:8px;">'
                             f'<span style="color:#9ca3af;">Status</span>'
-                            f'<span style="color:#e9d5ff;font-weight:600;">{status}</span></div>'
+                            f'<span style="color:#f0e8e5;font-weight:600;">{status}</span></div>'
                             if status else ""
                         )
                         + (
-                            f'<div style="border-left:3px solid #f472b6;'
-                            f'padding:10px 12px;background:#3d1a72;border-radius:0 8px 8px 0;'
-                            f'font-size:.82em;color:#fce7f3;line-height:1.7;">'
+                            f'<div style="border-left:3px solid #c97b6e;'
+                            f'padding:10px 12px;background:#2d3348;border-radius:0 8px 8px 0;'
+                            f'font-size:.82em;color:#fde8e3;line-height:1.7;">'
                             f'{sugg_html}</div>'
                             if sugg_html else ""
                         )
@@ -3477,9 +3510,9 @@ if st.session_state.active_qid:
                 elif elapsed_wait < 20:
                     # Still waiting — auto-refresh every 2.5 s (up to 8 times = 20 s)
                     st.markdown(
-                        '<div style="background:#2a1050;border:1px solid #3d1a72;'
+                        '<div style="background:#242838;border:1px solid #2d3348;'
                         'border-radius:14px;padding:12px 14px;margin-top:10px;'
-                        'font-size:.85em;color:#a78bfa;">⏳ AI analysis running…</div>',
+                        'font-size:.85em;color:#d4a898;">⏳ AI analysis running…</div>',
                         unsafe_allow_html=True,
                     )
                     st_autorefresh(interval=2500, limit=8, key="ai_refresh")
