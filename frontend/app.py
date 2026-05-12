@@ -13,8 +13,7 @@ from streamlit_autorefresh import st_autorefresh
 _BACKEND = os.getenv("BACKEND_URL", "https://dsa-planner.co.in")
 API_URL = f"{_BACKEND}/api"
 
-st.set_page_config(layout="wide", page_title="DSA Revision Planner", page_icon="🎯")
-
+st.set_page_config(layout="wide", page_title="DSA Planner · Pallavi's Learning Hub", page_icon="🎯")
 
 # ── AUTH PERSISTENCE via URL query params ─────────────────────────────────────
 # st.query_params are part of the URL so they survive page reloads automatically.
@@ -137,6 +136,17 @@ def show_auth_page():
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ── Hide all Streamlit chrome ── */
+#MainMenu                        { display: none !important; }
+footer                           { display: none !important; }
+header                           { display: none !important; }
+[data-testid="stDecoration"]     { display: none !important; }
+[data-testid="stStatusWidget"]   { display: none !important; }
+[data-testid="stToolbar"]        { display: none !important; }
+[data-testid="manage-app-button"]{ display: none !important; }
+[data-testid="stAppDeployButton"]{ display: none !important; }
+.stDeployButton                  { display: none !important; }
 
 html, body, [data-testid="stAppViewContainer"] {
     background: #faf6f0 !important;
