@@ -137,16 +137,24 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-/* ── Hide all Streamlit chrome ── */
-#MainMenu                        { display: none !important; }
-footer                           { display: none !important; }
-header                           { display: none !important; }
-[data-testid="stDecoration"]     { display: none !important; }
-[data-testid="stStatusWidget"]   { display: none !important; }
-[data-testid="stToolbar"]        { display: none !important; }
-[data-testid="manage-app-button"]{ display: none !important; }
-[data-testid="stAppDeployButton"]{ display: none !important; }
-.stDeployButton                  { display: none !important; }
+/* ── Hide ALL Streamlit chrome including the top-right toolbar ── */
+#MainMenu                             { display: none !important; }
+footer                                { display: none !important; }
+header                                { display: none !important; }
+[data-testid="stDecoration"]          { display: none !important; }
+[data-testid="stStatusWidget"]        { display: none !important; }
+[data-testid="stToolbar"]             { display: none !important; }
+[data-testid="stToolbarActions"]      { display: none !important; }
+[data-testid="stAppToolbar"]          { display: none !important; }
+[data-testid="manage-app-button"]     { display: none !important; }
+[data-testid="stAppDeployButton"]     { display: none !important; }
+[data-testid="stActionButton"]        { display: none !important; }
+[data-testid="baseButton-header"]     { display: none !important; }
+.stDeployButton                       { display: none !important; }
+.stToolbar                            { display: none !important; }
+/* Top-right floating action bar (Print / Record screen) */
+[class*="toolbar"]                    { display: none !important; }
+div[data-testid="collapsedControl"]   { display: none !important; }
 
 html, body, [data-testid="stAppViewContainer"] {
     background: #faf6f0 !important;

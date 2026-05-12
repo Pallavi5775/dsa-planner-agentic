@@ -15,4 +15,4 @@ enableXsrfProtection = false
 
 [client]
 showSidebarNavigation = false
-toolbarMode      = "minimal"
+toolbarMode      = "viewer"
