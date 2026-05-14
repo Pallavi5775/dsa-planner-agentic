@@ -372,3 +372,72 @@ sudo systemctl reload nginx
 ## Architectural Note
 
 *"The platform is structured with a modular IP model where the foundational educational framework — learning methodology, spaced repetition engine, and base planner — remains the independent core product, while the advanced AI-driven orchestration, autonomous agent pipelines, and enterprise automation components form a separate commercial extension layer."*
+
+
+
+
+Agents & MCP Servers — Connection Map
+Layer 1: MCP Servers (external interface → Claude Code)
+These are servers that you (Claude Code) connect to. They don't call any AI — they just expose the backend as tools.
+
+
+Claude Code (you)
+     │
+     ├── mcp_server.py        →  "dsa-planner"
+     │       get_due_questions
+     │       get_user_stats
+     │       get_weak_areas
+     │       get_past_attempts
+     │       get_all_questions
+     │       get_user_progress
+     │       get_pattern_notes
+     │       get_all_users
+     │       run_study_coach  ──────────────────────► agent.py (OpenAI)
+     │
+     ├── mcp_sharepoint.py    →  "sharepoint"
+     │       sharepoint_list_sessions
+     │       sharepoint_list_sessions_with_insights
+     │       sharepoint_save_session
+     │       sharepoint_save_summary
+     │       check_microsoft_connection
+     │
+     └── mcp_microsoft.py     →  "microsoft-graph"
+             get_calendar_events
+             create_study_event
+             send_teams_notification
+             run_calendar_scheduler_for_user ────────► calendar_agent.py (Claude Haiku)
+             run_teams_notifier_for_user     ────────► teams_agent.py    (Claude Haiku)
+             run_weekly_review    ───────────────────► orchestrator.py
+             run_daily_coaching   ───────────────────► orchestrator.py
+Layer 2: In-App Agents (called by FastAPI routes & orchestrator)
+These run inside the backend when a user logs a session, at daily/weekly triggers, etc.
+
+Agent file	AI model	What it does
+agent.py	OpenAI GPT-4o-mini	Session insights, weekly summary, study coach — uses tool-use loop with 5 DB tools
+teams_agent.py	Claude Haiku	Formats and sends Teams adaptive card notifications
+sharepoint_agent.py	Claude Haiku	Saves sessions/insights/summaries to OneDrive
+calendar_agent.py	Claude Haiku	Checks Outlook free slots, creates study block events
+orchestrator.py	none (coordinator)	Runs above agents in parallel/sequential pipelines
+Layer 3: Who calls what
+
+FastAPI POST /questions/{id}/log
+    └─► orchestrator.run_post_session_pipeline()
+            ├─► agent.agentic_session_insight()      [OpenAI]
+            ├─► sharepoint_agent.run_sharepoint_librarian()  [Claude Haiku]
+            └─► teams_agent.run_teams_notifier()     [Claude Haiku]
+
+Background worker (Sunday)
+    └─► orchestrator.run_weekly_review_pipeline()
+            ├─► agent.agentic_weekly_summary()       [OpenAI]  ─┐ parallel
+            ├─► agent.agentic_study_coach()          [OpenAI]  ─┘
+            ├─► sharepoint_agent  [Claude Haiku]     ─┐ parallel
+            ├─► teams_agent       [Claude Haiku]     ─┤
+            └─► calendar_agent    [Claude Haiku]     ─┘
+
+Background worker (daily at user's notify_hour)
+    └─► orchestrator.run_daily_coaching_pipeline()
+            ├─► agent.agentic_study_coach()          [OpenAI]  ─┐ parallel
+            ├─► get_due_questions (DB)               ──────────┘
+            ├─► calendar_agent    [Claude Haiku]     ─┐ parallel
+            └─► teams_agent       [Claude Haiku]     ─┘
+Summary: OpenAI does the thinking (insights, coaching, summaries). Claude Haiku handles the Microsoft integrations (Teams, OneDrive, Calendar). The MCP servers are just a bridge for you (Claude Code) to query the live database and trigger those pipelines from this conversation.
