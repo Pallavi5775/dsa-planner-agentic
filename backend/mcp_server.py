@@ -40,10 +40,7 @@ load_dotenv()  # Also try CWD
 
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP(
-    "dsa-planner",
-    description="DSA Revision Planner — query questions, user progress, practice history, and stats",
-)
+mcp = FastMCP("dsa-planner")
 
 
 # ── Tools ────────────────────────────────────────────────────────────────────────

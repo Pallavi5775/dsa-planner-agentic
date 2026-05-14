@@ -16,13 +16,19 @@ router = APIRouter()
 
 
 async def _validate_then_push(user_id: int, qid: int, session_data: dict) -> None:
-    """Background task: AI-validate the session, then push to GitHub with gap_analysis included."""
+    """
+    Background task: AI-validate the session, then run the post-session
+    orchestrator pipeline.
+
+    Storage priority (enterprise pattern):
+      1. SharePoint / OneDrive  — primary (Microsoft login)
+      2. GitHub                 — optional fallback (if connected)
+    """
     q = session_data.get("question", "?")
     log.info("[session] starting validate+push for user=%s qid=%s", user_id, qid)
     try:
         from backend.db.session import AsyncSessionLocal
         from backend.db.models import User as UserModel
-        from backend.services.github_storage import GitHubStorageService
         from backend.services.ai_insights import has_api_key
 
         # Step 1 — AI validate: saves accuracy/suggestions/revision_status to DB
@@ -35,37 +41,51 @@ async def _validate_then_push(user_id: int, qid: int, session_data: dict) -> Non
         except Exception as ve:
             log.error("[session] validate failed for qid=%s: %s", qid, ve, exc_info=True)
 
-        # Step 2 — push to GitHub (skip if no GitHub token)
+        session_data["gap_analysis"] = gap_analysis
+
         async with AsyncSessionLocal() as db:
             user = await db.get(UserModel, user_id)
-        if not user or not user.github_access_token or not user.github_username:
-            log.info("[session] user=%s has no github token — skipping push", user_id)
-            return
 
-        svc = GitHubStorageService(user.github_access_token, user.github_username)
-        await svc.ensure_repo()
-
-        # Include AI gap analysis in the session JSON so it's visible in the journal
-        session_data["gap_analysis"] = gap_analysis
-        committed = await svc.commit_session(session_data)
-        log.info("[session] session commit=%s for %s", committed, q)
-
-        # Step 3 — generate and commit AI insight markdown (agentic: queries history before writing)
-        if not has_api_key():
-            log.info("[session] ANTHROPIC_API_KEY not set — skipping insight")
-        elif committed:
+        # Step 2 — SharePoint (primary enterprise storage)
+        if user and user.microsoft_access_token:
             try:
-                from backend.services.agent import agentic_session_insight
-                insight_md = await agentic_session_insight(session_data, user_id)
-                ok = await svc.commit_insight(insight_md, session_data["date"], q)
-                log.info("[session] insight commit=%s for %s", ok, q)
-            except Exception as ie:
-                log.warning("[session] insight skipped for %s: %s", q, ie)
+                from backend.services.sharepoint_storage import SharePointStorageService
+                sp = SharePointStorageService(user.microsoft_access_token, user.microsoft_refresh_token)
+                committed = await sp.commit_session(session_data)
+                log.info("[session] sharepoint commit=%s for %s", committed, q)
+            except Exception as se:
+                log.warning("[session] sharepoint commit failed: %s", se)
 
-        # Step 4 — mastery notification: compute per-pattern accuracy for this user
+        # Step 3 — Orchestrator pipeline (agentic insight + Teams notification)
+        if has_api_key():
+            try:
+                from backend.services.orchestrator import run_post_session_pipeline
+                results = await run_post_session_pipeline(
+                    user_id=user_id,
+                    session_data=session_data,
+                    ms_access_token=user.microsoft_access_token if user else None,
+                    ms_refresh_token=user.microsoft_refresh_token if user else None,
+                    teams_webhook=user.teams_webhook_url if user else None,
+                )
+                log.info("[session] orchestrator pipeline done for %s", q)
+            except Exception as oe:
+                log.error("[session] orchestrator failed: %s", oe, exc_info=True)
+
+        # Step 4 — GitHub (optional fallback — only if no Microsoft token)
+        if user and user.github_access_token and user.github_username and not user.microsoft_access_token:
+            try:
+                from backend.services.github_storage import GitHubStorageService
+                svc = GitHubStorageService(user.github_access_token, user.github_username)
+                await svc.ensure_repo()
+                await svc.commit_session(session_data)
+                log.info("[session] github fallback commit done for %s", q)
+            except Exception as ge:
+                log.warning("[session] github fallback failed: %s", ge)
+
+        # Step 4 — mastery notification
         try:
             pattern = session_data.get("pattern", "")
-            if pattern:
+            if pattern and user:
                 from backend.db.models import UserQuestionProgress, Question as QuestionModel
                 from backend.services.notifications import notify_user
                 from sqlalchemy.future import select as sa_select
@@ -285,6 +305,33 @@ async def upload_md(
     return {"added": added, "total": total}
 
 
+@router.post("/upload_md/agentic")
+async def upload_md_agentic(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    _: int = Depends(require_admin),
+):
+    """
+    Agentic markdown import.
+
+    An AI agent reads the file, checks for duplicates, classifies each question
+    (pattern, difficulty, category), generates a hint, imports everything,
+    and returns a rich report of what was added and what was skipped.
+    """
+    if not file.filename.endswith(".md"):
+        raise HTTPException(status_code=400, detail="Only .md files are supported.")
+
+    import os
+    if not os.getenv("OPENAI_API_KEY"):
+        raise HTTPException(status_code=503, detail="OPENAI_API_KEY not configured.")
+
+    content = (await file.read()).decode("utf-8")
+
+    from backend.services.admin_agent import run_admin_upload_agent
+    report = await run_admin_upload_agent(content, db)
+    return report
+
+
 @router.patch("/me/practice-days")
 async def update_practice_days(
     practice_days: str = Body(..., embed=True),
@@ -343,7 +390,6 @@ async def github_history(
     db: AsyncSession = Depends(get_db),
     user_id: int = Depends(get_current_user_id),
 ):
-    """Return all practice sessions + AI insights from the user's private GitHub repo."""
     from backend.db.models import User as UserModel
     from backend.services.github_storage import GitHubStorageService
 
@@ -352,6 +398,24 @@ async def github_history(
         return {"connected": False, "sessions": []}
 
     svc = GitHubStorageService(user.github_access_token, user.github_username)
+    sessions = await svc.list_sessions_with_insights()
+    return {"connected": True, "sessions": sessions}
+
+
+@router.get("/sharepoint/history")
+async def sharepoint_history(
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    """Return all practice sessions + AI insights from the user's OneDrive."""
+    from backend.db.models import User as UserModel
+    from backend.services.sharepoint_storage import SharePointStorageService
+
+    user = await db.get(UserModel, user_id)
+    if not user or not user.microsoft_access_token:
+        return {"connected": False, "sessions": []}
+
+    svc = SharePointStorageService(user.microsoft_access_token, user.microsoft_refresh_token)
     sessions = await svc.list_sessions_with_insights()
     return {"connected": True, "sessions": sessions}
 
@@ -436,6 +500,35 @@ async def admin_create_user(
     await db.commit()
     await db.refresh(user)
     return {"id": user.id, "username": user.username, "email": user.email, "role": user.role}
+
+
+@router.get("/admin/agent-logs")
+async def get_agent_logs(
+    limit: int = 100,
+    _: int = Depends(require_admin),
+):
+    """Return recent agent activity log entries from in-memory buffer."""
+    from backend.services.agent_logger import get_logs
+    return {"logs": get_logs(limit)}
+
+
+@router.delete("/admin/agent-logs")
+async def clear_agent_logs(_: int = Depends(require_admin)):
+    """Clear the in-memory agent log buffer."""
+    from backend.services.agent_logger import clear_logs
+    clear_logs()
+    return {"status": "cleared"}
+
+
+@router.get("/admin/question-count")
+async def admin_question_count(
+    db: AsyncSession = Depends(get_db),
+    _: int = Depends(require_admin),
+):
+    """Admin debug: return raw count of questions in dsa.questions table."""
+    from backend.db.models import Question as QuestionModel
+    count = len((await db.execute(select(QuestionModel))).scalars().all())
+    return {"count": count}
 
 
 @router.get("/users")

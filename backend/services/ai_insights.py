@@ -1,11 +1,13 @@
 import os
 from datetime import datetime, timezone
 
-import anthropic
+from openai import AsyncOpenAI
 
 
-def _client() -> anthropic.AsyncAnthropic:
-    return anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+def _client() -> AsyncOpenAI:
+    return AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
+
+MODEL = "gpt-4o-mini"
 
 
 async def generate_session_insight(session: dict) -> str:
@@ -49,12 +51,12 @@ Format exactly like this (no extra text outside):
 """
 
     client = _client()
-    resp = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
+    resp = await client.chat.completions.create(
+        model=MODEL,
         max_tokens=600,
         messages=[{"role": "user", "content": prompt}],
     )
-    return resp.content[0].text
+    return resp.choices[0].message.content or ""
 
 
 async def generate_weekly_summary(sessions: list[dict], username: str) -> str:
@@ -113,13 +115,13 @@ Format:
 """
 
     client = _client()
-    resp = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
+    resp = await client.chat.completions.create(
+        model=MODEL,
         max_tokens=800,
         messages=[{"role": "user", "content": prompt}],
     )
-    return resp.content[0].text
+    return resp.choices[0].message.content or ""
 
 
 def has_api_key() -> bool:
-    return bool(os.getenv("ANTHROPIC_API_KEY"))
+    return bool(os.getenv("OPENAI_API_KEY"))

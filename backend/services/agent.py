@@ -1,9 +1,9 @@
 """
-Agentic AI services using Claude tool-use loops (Path A).
+Agentic AI services using OpenAI tool-use loops (Path A).
 
-Claude reasons across multiple tool calls — querying the real DB for context —
-before producing output. This gives personalized, history-aware results
-instead of generic prompt→response text.
+GPT-4o-mini reasons across multiple tool calls — querying the real DB
+for context — before producing output. This gives personalized,
+history-aware results instead of generic prompt→response text.
 """
 
 import json
@@ -11,16 +11,16 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 
-import anthropic
+from openai import AsyncOpenAI
 
 log = logging.getLogger(__name__)
 
-MODEL = "claude-haiku-4-5-20251001"
-MAX_ITERATIONS = 6  # Safety cap on agent loop turns
+AGENT_MODEL    = "gpt-4o-mini"
+MAX_ITERATIONS = 6
 
 
-def _client() -> anthropic.AsyncAnthropic:
-    return anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+def _client() -> AsyncOpenAI:
+    return AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
 
 
 # ── DB tool implementations ─────────────────────────────────────────────────────
@@ -252,52 +252,89 @@ async def _execute_tool(name: str, inputs: dict):
 
 # ── Generic agent loop ───────────────────────────────────────────────────────────
 
+def _to_openai_tools(schemas: list) -> list:
+    """Convert tool schemas to Azure OpenAI function-calling format."""
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": t["name"],
+                "description": t["description"],
+                "parameters": t["input_schema"],
+            },
+        }
+        for t in schemas
+    ]
+
+
 async def _run_agent_loop(
     system: str,
     user_message: str,
     max_tokens: int = 1000,
 ) -> str:
     """
-    Run a Claude tool-use agent loop.
+    Run an Azure OpenAI tool-use agent loop.
 
-    Claude receives the system prompt and user message, calls tools as needed,
-    receives results, and continues until it produces a final text response.
-    Returns the final text output.
+    GPT-4o-mini receives the system prompt and user message, calls tools
+    as needed via function calling, receives results, and continues until
+    it produces a final text response. Returns the final text output.
     """
-    client = _client()
-    messages = [{"role": "user", "content": user_message}]
+    from backend.services.agent_logger import log_agent_start, log_agent_end
+    log_agent_start("study-agent", user_message[:120])
+
+    client  = _client()
+    tools   = _to_openai_tools(_TOOL_SCHEMAS)
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user",   "content": user_message},
+    ]
+    iteration_step = 0
 
     for _ in range(MAX_ITERATIONS):
-        response = await client.messages.create(
-            model=MODEL,
+        response = await client.chat.completions.create(
+            model=AGENT_MODEL,
             max_tokens=max_tokens,
-            system=system,
-            tools=_TOOL_SCHEMAS,
+            tools=tools,
+            tool_choice="auto",
             messages=messages,
         )
 
-        if response.stop_reason == "end_turn":
-            return "\n".join(b.text for b in response.content if hasattr(b, "text"))
+        choice  = response.choices[0]
+        message = choice.message
 
-        if response.stop_reason == "tool_use":
-            tool_uses = [b for b in response.content if b.type == "tool_use"]
-            messages.append({"role": "assistant", "content": response.content})
+        if choice.finish_reason == "stop":
+            log.info("[agent] ✅ end_turn — final response ready")
+            log_agent_end("study-agent", message.content or "")
+            return message.content or ""
 
-            tool_results = []
-            for tu in tool_uses:
-                result = await _execute_tool(tu.name, tu.input)
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": tu.id,
-                    "content": json.dumps(result, default=str),
+        if choice.finish_reason == "tool_calls" and message.tool_calls:
+            messages.append(message)
+            for tc in message.tool_calls:
+                try:
+                    inputs = json.loads(tc.function.arguments)
+                except json.JSONDecodeError:
+                    inputs = {}
+
+                log.info("[agent] → tool_call: %s(%s)", tc.function.name,
+                         ", ".join(f"{k}={repr(v)[:40]}" for k, v in inputs.items()))
+
+                from backend.services.agent_logger import log_tool_call, log_tool_result
+                log_tool_call("study-agent", tc.function.name, inputs, step=iteration_step)
+                iteration_step += 1
+
+                result = await _execute_tool(tc.function.name, inputs)
+                log.info("[agent] ← result: %s", str(result)[:120])
+                log_tool_result("study-agent", tc.function.name, result, step=iteration_step)
+
+                messages.append({
+                    "role":         "tool",
+                    "tool_call_id": tc.id,
+                    "content":      json.dumps(result, default=str),
                 })
-            messages.append({"role": "user", "content": tool_results})
         else:
-            break
+            return message.content or ""
 
-    # Fallback: extract any text produced before stopping
-    text = "\n".join(b.text for b in response.content if hasattr(b, "text"))
-    return text or ""
+    return message.content or ""
 
 
 # ── Public agentic functions ─────────────────────────────────────────────────────

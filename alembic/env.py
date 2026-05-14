@@ -31,11 +31,11 @@ def run_migrations_online():
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            include_schemas=True
+            include_schemas=True,
+            transaction_per_migration=True,
         )
 
-        with context.begin_transaction():
-            context.run_migrations()
+        context.run_migrations()
 
 
 run_migrations_online()

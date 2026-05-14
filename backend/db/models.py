@@ -26,6 +26,12 @@ class User(Base):
     notify_hour = Column(Integer, default=8, nullable=False)  # UTC hour for daily digest
     last_notif_date = Column(String, nullable=True)           # ISO date; prevents duplicate daily notifs
 
+    # Microsoft integration
+    microsoft_access_token = Column(String, nullable=True)
+    microsoft_refresh_token = Column(String, nullable=True)
+    microsoft_user_id = Column(String, nullable=True)
+    teams_webhook_url = Column(String, nullable=True)
+
     progress = relationship("UserQuestionProgress", back_populates="user", cascade="all, delete")
     logs = relationship("PracticeLog", back_populates="user", cascade="all, delete")
     pattern_notes = relationship("UserPatternNote", back_populates="user", cascade="all, delete")

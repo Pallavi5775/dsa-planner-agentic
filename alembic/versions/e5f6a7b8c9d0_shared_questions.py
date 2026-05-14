@@ -16,17 +16,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade():
-    # 1. Drop per-user columns from questions (and user_id FK)
-    op.drop_column('questions', 'user_id', schema='dsa')
-    op.drop_column('questions', 'coverage_status', schema='dsa')
-    op.drop_column('questions', 'revision_status', schema='dsa')
-    op.drop_column('questions', 'ease_factor', schema='dsa')
-    op.drop_column('questions', 'interval_days', schema='dsa')
-    op.drop_column('questions', 'next_revision', schema='dsa')
-    op.drop_column('questions', 'accuracy', schema='dsa')
-    op.drop_column('questions', 'suggestions', schema='dsa')
-    op.drop_column('questions', 'notes', schema='dsa')
-    op.drop_column('questions', 'my_gap_analysis', schema='dsa')
+    # 1. Drop per-user columns from questions — use IF EXISTS so this is
+    #    safe on both existing databases and fresh ones where some columns
+    #    may never have existed.
+    for col in ('user_id', 'coverage_status', 'revision_status', 'ease_factor',
+                'interval_days', 'next_revision', 'accuracy', 'suggestions',
+                'notes', 'my_gap_analysis'):
+        op.execute(f"ALTER TABLE dsa.questions DROP COLUMN IF EXISTS {col}")
 
     # 2. Add unique constraint on questions.title
     op.create_unique_constraint('uq_questions_title', 'questions', ['title'], schema='dsa')

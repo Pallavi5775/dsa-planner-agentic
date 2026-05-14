@@ -460,9 +460,9 @@ Return ONLY a valid JSON object. No markdown. No preamble.
 """
 
     try:
-        import openai
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        response = client.chat.completions.create(
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a strict DSA tutor. If input is gibberish, mark it incorrect. Output strictly JSON."},
@@ -626,9 +626,9 @@ async def variation_review(
     )
 
     try:
-        import openai
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        response = client.chat.completions.create(
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a strict but fair DSA evaluator. Output only valid JSON."},
@@ -680,9 +680,9 @@ async def generate_question_description(db: AsyncSession, qid: int) -> dict:
     )
 
     try:
-        import openai
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        response = client.chat.completions.create(
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a technical problem writer. Output only the problem description, no commentary."},
@@ -784,9 +784,9 @@ async def hint_chat(
     messages.append({"role": "user", "content": message})
 
     try:
-        import openai
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        response = client.chat.completions.create(
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
             max_tokens=max_tokens,
@@ -853,9 +853,9 @@ async def pattern_chat(db: AsyncSession, pattern: str, message: str, generate_me
         )
 
     try:
-        import openai
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        response = client.chat.completions.create(
+        from openai import AsyncOpenAI
+        client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_prompt},

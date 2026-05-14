@@ -16,16 +16,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Drop schedule if it was added manually, ignore error if it doesn't exist
-    try:
-        op.drop_column('users', 'schedule', schema='dsa')
-    except Exception:
-        pass
-    op.add_column(
-        'users',
-        sa.Column('practice_days', sa.String(), nullable=False, server_default=''),
-        schema='dsa',
-    )
+    op.execute("ALTER TABLE dsa.users DROP COLUMN IF EXISTS schedule")
+    op.execute("ALTER TABLE dsa.users ADD COLUMN IF NOT EXISTS practice_days VARCHAR NOT NULL DEFAULT ''")
 
 
 def downgrade() -> None:

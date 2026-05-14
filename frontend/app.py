@@ -9,8 +9,14 @@ import pandas as pd
 import time
 from streamlit_autorefresh import st_autorefresh
 
-# Set BACKEND_URL env var to override (e.g. for local dev: http://localhost:8000)
-_BACKEND = os.getenv("BACKEND_URL", "https://dsa-planner.co.in")
+# Load .env from DSA_TRACKER/ (one level up from frontend/)
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+except ImportError:
+    pass
+
+_BACKEND = os.getenv("BACKEND_URL", "http://localhost:8000")
 API_URL = f"{_BACKEND}/api"
 
 st.set_page_config(layout="wide", page_title="DSA Planner · Pallavi's Learning Hub", page_icon="🎯")
@@ -60,7 +66,6 @@ def auth_headers():
     return {"Authorization": f"Bearer {st.session_state.get('token', '')}"}
 
 
-BACKEND_URL = "http://localhost:8000"
 
 # ── Code editor (streamlit-ace) — graceful fallback to styled textarea ────────
 try:
@@ -71,10 +76,10 @@ except ImportError:
 
 
 def show_auth_page():
-    """Full-screen OAuth login page."""
+    """Full-screen login page — Microsoft only."""
     st.markdown("""
     <style>
-    html, body, [data-testid="stAppViewContainer"] { background: #faf6f0 !important; }
+    html, body, [data-testid="stAppViewContainer"] { background: #ffffff !important; }
     .auth-btn {
         display: flex; align-items: center; justify-content: center; gap: 10px;
         width: 100%; padding: 13px 20px; border-radius: 12px; font-size: 1em;
@@ -82,8 +87,7 @@ def show_auth_page():
         border: 1.5px solid; cursor: pointer; transition: opacity .15s;
     }
     .auth-btn:hover { opacity: .85; }
-    .btn-google { background:#fff; color:#3c4043; border-color:#dadce0; }
-    .btn-github { background:#1b1e2e; color:#faf6f0; border-color:#1b1e2e; }
+    .btn-microsoft { background:#0078d4; color:#fff; border-color:#0078d4; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -92,39 +96,31 @@ def show_auth_page():
         st.markdown(
             '<div style="font-size:2.2em;text-align:center;margin-bottom:4px">🎯</div>'
             '<div style="text-align:center;font-size:1.5em;font-weight:800;'
-            'background:linear-gradient(135deg,#c97b6e,#b5615a);'
+            'background:linear-gradient(135deg,#7c3aed,#6d28d9);'
             '-webkit-background-clip:text;-webkit-text-fill-color:transparent;'
             'margin-bottom:2px">DSA Revision Planner</div>'
-            '<div style="text-align:center;color:#d4a898;font-size:.85em;margin-bottom:28px">'
+            '<div style="text-align:center;color:#a78bfa;font-size:.85em;margin-bottom:28px">'
             'Track · Practice · Master</div>',
             unsafe_allow_html=True,
         )
 
-        google_url = f"{_BACKEND}/api/auth/google"
-        github_url = f"{_BACKEND}/api/auth/github"
+        microsoft_url = f"{_BACKEND}/api/auth/microsoft"
 
         st.markdown(
-            f'<a class="auth-btn btn-google" href="{google_url}" target="_self">'
-            '<svg width="20" height="20" viewBox="0 0 48 48">'
-            '<path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.8 2.5 30.2 0 24 0 14.8 0 6.9 5.4 3 13.3l7.8 6C12.7 13 17.9 9.5 24 9.5z"/>'
-            '<path fill="#4285F4" d="M46.6 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 6.9-10 6.9-17z"/>'
-            '<path fill="#FBBC05" d="M10.8 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7L2.5 13.3A24 24 0 0 0 0 24c0 3.8.9 7.4 2.5 10.6l8.3-5.9z"/>'
-            '<path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.2-8.4 2.2-6.1 0-11.3-3.6-13.2-8.8l-8.3 5.9C6.9 42.6 14.8 48 24 48z"/>'
-            '</svg>Continue with Google</a>',
+            f'<a class="auth-btn btn-microsoft" href="{microsoft_url}" target="_self">'
+            '<svg width="20" height="20" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">'
+            '<rect x="1" y="1" width="9" height="9" fill="#f25022"/>'
+            '<rect x="11" y="1" width="9" height="9" fill="#7fba00"/>'
+            '<rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>'
+            '<rect x="11" y="11" width="9" height="9" fill="#ffb900"/>'
+            '</svg>Continue with Microsoft</a>',
             unsafe_allow_html=True,
         )
 
         st.markdown(
-            f'<a class="auth-btn btn-github" href="{github_url}" target="_self">'
-            '<svg width="20" height="20" viewBox="0 0 24 24" fill="white">'
-            '<path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.38.6.1.82-.26.82-.58v-2.17c-3.34.72-4.04-1.6-4.04-1.6-.54-1.38-1.33-1.75-1.33-1.75-1.09-.74.08-.73.08-.73 1.2.09 1.83 1.24 1.83 1.24 1.07 1.83 2.8 1.3 3.48.99.1-.78.42-1.3.76-1.6-2.66-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.12-3.17 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.13 3 .4 2.28-1.55 3.29-1.23 3.29-1.23.66 1.65.24 2.87.12 3.17.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58C20.56 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/>'
-            '</svg>Continue with GitHub</a>',
-            unsafe_allow_html=True,
-        )
-
-        st.markdown(
-            '<p style="text-align:center;color:#d4a898;font-size:.78em;margin-top:16px">'
-            'We only read your public profile and email address.</p>',
+            '<p style="text-align:center;color:#a78bfa;font-size:.78em;margin-top:16px">'
+            'Sign in with your Microsoft account to access OneDrive storage, '
+            'Outlook Calendar, and Teams notifications.</p>',
             unsafe_allow_html=True,
         )
 
@@ -132,7 +128,7 @@ def show_auth_page():
 
 # ── GLOBAL CSS ────────────────────────────────────────────────────────────────
 # Brand palette — Pallavi's Learning Hub
-# Dark navy #1b1e2e · Cream #faf6f0 · Rose #c97b6e · Deep rose #b5615a
+# Dark navy #2e1065 · Cream #ffffff · Rose #7c3aed · Deep rose #6d28d9
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -157,7 +153,7 @@ header                                { display: none !important; }
 div[data-testid="collapsedControl"]   { display: none !important; }
 
 html, body, [data-testid="stAppViewContainer"] {
-    background: #faf6f0 !important;
+    background: #ffffff !important;
     font-family: 'Inter','Segoe UI',sans-serif;
     font-size: 17px !important;
 }
@@ -171,7 +167,7 @@ html, body, [data-testid="stAppViewContainer"] {
     box-shadow: 0 2px 8px rgba(201,123,110,.08) !important;
 }
 [data-testid="stMetricLabel"] p {
-    color: #c97b6e !important;
+    color: #7c3aed !important;
     font-size: .72em !important;
     font-weight: 700 !important;
     letter-spacing: .8px !important;
@@ -180,7 +176,7 @@ html, body, [data-testid="stAppViewContainer"] {
 [data-testid="stMetricValue"] {
     font-size: 1.9em !important;
     font-weight: 800 !important;
-    background: linear-gradient(135deg,#c97b6e,#b5615a) !important;
+    background: linear-gradient(135deg,#7c3aed,#6d28d9) !important;
     -webkit-background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
 }
@@ -189,8 +185,8 @@ html, body, [data-testid="stAppViewContainer"] {
     font-weight: 600; color: #9ca3af; font-size: .9em;
 }
 [data-testid="stTabs"] [role="tab"][aria-selected="true"] {
-    color: #c97b6e !important;
-    border-bottom: 2.5px solid #c97b6e !important;
+    color: #7c3aed !important;
+    border-bottom: 2.5px solid #7c3aed !important;
 }
 
 [data-testid="stSelectbox"] > div > div {
@@ -202,7 +198,7 @@ html, body, [data-testid="stAppViewContainer"] {
 
 /* ── Sidebar ── */
 [data-testid="stSidebar"] {
-    background: #1b1e2e !important;
+    background: #2e1065 !important;
     border-right: 1px solid #252840 !important;
     min-width: 440px !important;
     max-width: 440px !important;
@@ -219,7 +215,7 @@ html, body, [data-testid="stAppViewContainer"] {
 [data-testid="stSidebar"] h3 { color: #faf0ed !important; }
 [data-testid="stSidebar"] textarea,
 [data-testid="stSidebar"] input {
-    background: #242838 !important;
+    background: #1e1b4b !important;
     border: 1px solid #2d3348 !important;
     color: #f0e8e5 !important;
     border-radius: 10px !important;
@@ -229,7 +225,7 @@ html, body, [data-testid="stAppViewContainer"] {
 }
 [data-testid="stSidebar"] textarea:focus,
 [data-testid="stSidebar"] input:focus {
-    border-color: #e8a898 !important;
+    border-color: #c4b5fd !important;
     box-shadow: 0 0 0 2px rgba(232,168,152,.25) !important;
 }
 [data-testid="stSidebar"] .stButton > button {
@@ -239,16 +235,16 @@ html, body, [data-testid="stAppViewContainer"] {
     padding: 0.22rem 0.65rem !important;
     line-height: 1.4 !important;
     background: #1e2235 !important;
-    color: #e8a898 !important;
+    color: #c4b5fd !important;
     border: 1px solid #8b4a42 !important;
 }
 [data-testid="stSidebar"] .stButton > button:hover {
     background: #2a2f45 !important;
     color: #fde8e3 !important;
-    border-color: #c97b6e !important;
+    border-color: #7c3aed !important;
 }
 [data-testid="stSidebar"] [data-testid="baseButton-primary"] > button {
-    background: linear-gradient(135deg,#c97b6e,#b5615a) !important;
+    background: linear-gradient(135deg,#7c3aed,#6d28d9) !important;
     border: none !important;
     color: #fff !important;
     box-shadow: 0 2px 8px rgba(201,123,110,.35) !important;
@@ -264,19 +260,19 @@ html, body, [data-testid="stAppViewContainer"] {
     transition: all 0.15s ease !important;
 }
 [data-testid="baseButton-primary"] > button {
-    background: #c97b6e !important;
+    background: #7c3aed !important;
     color: #ffffff !important;
     border: none !important;
     box-shadow: 0 2px 6px rgba(201,123,110,.4) !important;
 }
 [data-testid="baseButton-primary"] > button:hover {
-    background: #b5615a !important;
+    background: #6d28d9 !important;
     box-shadow: 0 3px 10px rgba(181,97,90,.45) !important;
 }
 [data-testid="baseButton-secondary"] > button {
-    background: #1b1e2e !important;
-    color: #faf6f0 !important;
-    border: 1.5px solid #1b1e2e !important;
+    background: #2e1065 !important;
+    color: #ffffff !important;
+    border: 1.5px solid #2e1065 !important;
 }
 [data-testid="baseButton-secondary"] > button:hover {
     background: #252840 !important;
@@ -294,11 +290,11 @@ textarea[data-testid="stTextArea"],
     border: 1.5px solid #3c3c3c !important;
     border-radius: 8px !important;
     line-height: 1.65 !important;
-    caret-color: #e8a898 !important;
+    caret-color: #c4b5fd !important;
 }
 textarea[data-testid="stTextArea"]:focus,
 .code-editor-area textarea:focus {
-    border-color: #c97b6e !important;
+    border-color: #7c3aed !important;
     box-shadow: 0 0 0 2px rgba(201,123,110,.3) !important;
     outline: none !important;
 }
@@ -313,12 +309,23 @@ textarea[data-testid="stTextArea"]:focus,
 
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
-def fetch_activity():
+def invalidate_cache():
+    """Clear cached API data so next rerun fetches fresh from backend."""
+    for key in ("cached_questions", "cached_activity"):
+        st.session_state.pop(key, None)
+
+
+def fetch_activity(force: bool = False):
+    """Fetch activity once per session. Pass force=True to refresh."""
+    if not force and "cached_activity" in st.session_state:
+        return st.session_state["cached_activity"]
     try:
         tz_name = st.query_params.get("tz", "UTC")
         r = requests.get(f"{API_URL}/activity", headers=auth_headers(),
                          params={"tz": tz_name}, timeout=8)
-        return r.json() if r.status_code == 200 else {}
+        data = r.json() if r.status_code == 200 else {}
+        st.session_state["cached_activity"] = data
+        return data
     except:
         return {}
 
@@ -330,16 +337,16 @@ def build_heatmap_html(sessions_by_date: dict, weeks: int = 16) -> str:
 
     def cell_color(n):
         if n == 0:   return "#fdf0ec"
-        if n == 1:   return "#f5d5c8"
-        if n == 2:   return "#d4a898"
-        if n == 3:   return "#c97b6e"
+        if n == 1:   return "#ede9fe"
+        if n == 2:   return "#a78bfa"
+        if n == 3:   return "#7c3aed"
         return "#7a3f38"
 
     day_labels = ["Mon","","Wed","","Fri","","Sun"]
 
     # left day-name column
     day_col = "".join(
-        f'<div style="height:13px;line-height:13px;font-size:.6em;color:#d4a898;'
+        f'<div style="height:13px;line-height:13px;font-size:.6em;color:#a78bfa;'
         f'text-align:right;padding-right:4px;margin-bottom:2px;">{l}</div>'
         for l in day_labels
     )
@@ -357,7 +364,7 @@ def build_heatmap_html(sessions_by_date: dict, weeks: int = 16) -> str:
             left_px = col_idx * 15
             month_labels += (
                 f'<span style="position:absolute;left:{left_px}px;'
-                f'font-size:.6em;color:#c97b6e;font-weight:600;">'
+                f'font-size:.6em;color:#7c3aed;font-weight:600;">'
                 f'{cur.strftime("%b")}</span>'
             )
             prev_month = cur.month
@@ -372,7 +379,7 @@ def build_heatmap_html(sessions_by_date: dict, weeks: int = 16) -> str:
             bg    = cell_color(n)
             tip   = f"{day.strftime('%b %d')}: {n} session{'s' if n!=1 else ''}"
             is_today = day == today
-            border = "border:1.5px solid #c97b6e;" if is_today else ""
+            border = "border:1.5px solid #7c3aed;" if is_today else ""
             col += (
                 f'<div title="{tip}" style="width:11px;height:11px;border-radius:3px;'
                 f'background:{bg};{border}margin-bottom:2px;"></div>'
@@ -385,7 +392,7 @@ def build_heatmap_html(sessions_by_date: dict, weeks: int = 16) -> str:
         f'<div style="background:#fff;border:1.5px solid #f0ddd8;border-radius:16px;'
         f'padding:18px 20px;box-shadow:0 2px 8px rgba(201,123,110,.06);">'
         f'<div style="font-size:.7em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
-        f'color:#c97b6e;margin-bottom:10px;">Activity Heatmap — last {weeks} weeks</div>'
+        f'color:#7c3aed;margin-bottom:10px;">Activity Heatmap — last {weeks} weeks</div>'
         f'<div style="display:flex;align-items:flex-start;gap:0;">'
         f'  <div style="margin-top:12px;">{day_col}</div>'
         f'  <div style="position:relative;">'
@@ -394,22 +401,30 @@ def build_heatmap_html(sessions_by_date: dict, weeks: int = 16) -> str:
         f'  </div>'
         f'</div>'
         f'<div style="display:flex;align-items:center;gap:4px;margin-top:10px;">'
-        f'  <span style="font-size:.65em;color:#d4a898;">Less</span>'
+        f'  <span style="font-size:.65em;color:#a78bfa;">Less</span>'
         + "".join(f'<div style="width:10px;height:10px;border-radius:2px;background:{cell_color(i)};"></div>' for i in range(5))
-        + f'  <span style="font-size:.65em;color:#d4a898;">More</span>'
+        + f'  <span style="font-size:.65em;color:#a78bfa;">More</span>'
         f'</div>'
         f'</div>'
     )
 
 
-def fetch_questions():
+def fetch_questions(force: bool = False):
+    """Fetch questions once per session. Pass force=True to refresh."""
+    if not force and "cached_questions" in st.session_state:
+        return st.session_state["cached_questions"]
     try:
         r = requests.get(f"{API_URL}/questions", headers=auth_headers(), timeout=8)
         if r.status_code == 401:
             st.session_state.pop('token', None)
             st.rerun()
-        return r.json() if r.status_code == 200 else []
-    except:
+        if r.status_code == 200:
+            st.session_state["cached_questions"] = r.json()
+            return st.session_state["cached_questions"]
+        st.session_state["questions_fetch_error"] = f"API error {r.status_code}: {r.text[:300]}"
+        return []
+    except Exception as e:
+        st.session_state["questions_fetch_error"] = f"Could not reach backend: {e}"
         return []
 
 
@@ -422,16 +437,16 @@ def badge_html(label, bg, color):
 
 
 def coverage_badge(cs):
-    return badge_html(cs, "#fde8e3", "#8b4a42") if cs == "Covered" else badge_html(cs, "#fdf5f2", "#9b5a52")
+    return badge_html(cs, "#fde8e3", "#8b4a42") if cs == "Covered" else badge_html(cs, "#f5f3ff", "#9b5a52")
 
 
 def revision_badge(rs):
     cfg = {
         "Mastered":   ("#f0ddd8", "#8b4a42"),
         "Needs Work": ("#fff1f2", "#be123c"),
-        "Pending":    ("#fdf5f2", "#c97b6e"),
+        "Pending":    ("#f5f3ff", "#7c3aed"),
     }
-    bg, col = cfg.get(rs, ("#fdf5f2", "#c97b6e"))
+    bg, col = cfg.get(rs, ("#f5f3ff", "#7c3aed"))
     return badge_html(rs, bg, col)
 
 
@@ -445,7 +460,7 @@ def acc_bar_html(acc):
     col = "#22c55e" if acc >= 80 else "#f59e0b" if acc >= 60 else "#ec4899"
     return (
         f'<span style="display:inline-flex;align-items:center;gap:5px;">'
-        f'<span style="display:inline-block;background:#fdf5f2;border-radius:6px;height:6px;width:80px;vertical-align:middle;">'
+        f'<span style="display:inline-block;background:#f5f3ff;border-radius:6px;height:6px;width:80px;vertical-align:middle;">'
         f'<span style="display:block;height:6px;border-radius:6px;width:{min(acc,100):.0f}%;background:{grad};"></span></span>'
         f'<span style="font-size:.78em;color:{col};font-weight:600;">{acc:.0f}%</span>'
         f'</span>'
@@ -462,7 +477,7 @@ def build_calendar(questions, year, month):
             due_map.setdefault(nr, []).append(q)
 
     headers = "".join(
-        f'<div style="text-align:center;font-size:.6em;font-weight:700;color:#d4a898;'
+        f'<div style="text-align:center;font-size:.6em;font-weight:700;color:#a78bfa;'
         f'letter-spacing:.8px;text-transform:uppercase;padding:4px 0 8px;">{d}</div>'
         for d in ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
     )
@@ -480,21 +495,21 @@ def build_calendar(questions, year, month):
             is_due     = bool(qs)
 
             if is_today:
-                bg, border = "linear-gradient(135deg,#c97b6e,#b5615a)", "transparent"
+                bg, border = "linear-gradient(135deg,#7c3aed,#6d28d9)", "transparent"
                 dn_col = "#fff"
             elif is_overdue:
                 bg, border = "#fff1f2", "#fca5a5"
                 dn_col = "#be123c"
             elif is_due:
-                bg, border = "#faf6f0", "#e8c4b8"
+                bg, border = "#ffffff", "#ddd6fe"
                 dn_col = "#7a3f38"
             else:
-                bg, border = "#faf6f0", "transparent"
+                bg, border = "#ffffff", "transparent"
                 dn_col = "#6b7280"
 
             badge = ""
             if qs:
-                dot_bg = "#ef4444" if is_overdue else "linear-gradient(135deg,#c97b6e,#b5615a)"
+                dot_bg = "#ef4444" if is_overdue else "linear-gradient(135deg,#7c3aed,#6d28d9)"
                 badge = (
                     f'<span style="display:inline-block;background:{dot_bg};color:#fff;'
                     f'border-radius:10px;font-size:.58em;font-weight:700;padding:1px 5px;'
@@ -639,7 +654,7 @@ def _render_notification_panel(notifs: list):
         unread = not n.get("is_read")
         ts    = n.get("created_at", "")[:16].replace("T", " ")
         dot   = (
-            '<span style="display:inline-block;width:7px;height:7px;background:#e8a898;'
+            '<span style="display:inline-block;width:7px;height:7px;background:#c4b5fd;'
             'border-radius:50%;flex-shrink:0;margin-top:5px;"></span>'
             if unread else
             '<span style="display:inline-block;width:7px;height:7px;flex-shrink:0;"></span>'
@@ -671,7 +686,7 @@ def _render_notification_panel(notifs: list):
         f'              display:flex;justify-content:space-between;align-items:center;">'
         f'    <span style="color:#f3e8ff;font-weight:700;font-size:.88em;letter-spacing:.2px;">'
         f'      🔔 Notifications</span>'
-        f'    <span style="background:#2d3348;color:#e8a898;border-radius:20px;'
+        f'    <span style="background:#2d3348;color:#c4b5fd;border-radius:20px;'
         f'                 padding:2px 10px;font-size:.72em;font-weight:700;">'
         f'      {unread_count} unread</span>'
         f'  </div>'
@@ -724,7 +739,7 @@ hdr_left, hdr_right = st.columns([0.65, 0.35])
 with hdr_left:
     st.markdown(
         '<h1 style="color:#3b0764;font-weight:800;letter-spacing:-1px;margin-bottom:0;">🎯 DSA Revision Planner</h1>'
-        '<p style="color:#d4a898;font-size:.88em;font-weight:500;margin-bottom:1.2rem;">Track · Practice · Master</p>',
+        '<p style="color:#a78bfa;font-size:.88em;font-weight:500;margin-bottom:1.2rem;">Track · Practice · Master</p>',
         unsafe_allow_html=True,
     )
 with hdr_right:
@@ -734,13 +749,13 @@ with hdr_right:
 
     role_icon  = "👑" if is_admin else "👤"
     role_label = "Admin" if is_admin else "User"
-    role_bg    = "linear-gradient(135deg,#c97b6e,#b5615a)" if is_admin else "linear-gradient(135deg,#c97b6e,#8b5cf6)"
+    role_bg    = "linear-gradient(135deg,#7c3aed,#6d28d9)" if is_admin else "linear-gradient(135deg,#7c3aed,#8b5cf6)"
 
     st.markdown(
         f'<div style="text-align:right;padding-top:10px;display:flex;justify-content:flex-end;gap:8px;align-items:center;">'
         f'<span style="background:{role_bg};color:#fff;border-radius:20px;'
         f'padding:4px 14px;font-size:.82em;font-weight:700;">{role_icon} {username}</span>'
-        f'<span style="background:#f3e8ff;color:#c97b6e;border-radius:20px;'
+        f'<span style="background:#f3e8ff;color:#7c3aed;border-radius:20px;'
         f'padding:3px 10px;font-size:.72em;font-weight:700;letter-spacing:.5px;text-transform:uppercase;">{role_label}</span>'
         f'</div>',
         unsafe_allow_html=True,
@@ -759,17 +774,19 @@ questions = fetch_questions()
 df = pd.DataFrame(questions) if questions else pd.DataFrame()
 
 is_admin   = st.session_state.get('role', 'user') == 'admin'
-has_github = st.session_state.get('oauth_provider') == 'github'
+has_microsoft = st.session_state.get('oauth_provider') == 'microsoft'
 
-# Build tab list dynamically — Journal only for GitHub users, Add Questions only for admins
+# Build tab list dynamically — Journal only for Microsoft users, Add Questions only for admins
 tab_labels = ["📋 Questions", "📅 Calendar", "⚡ Activity", "⚙ Settings", "📚 Patterns"]
-if has_github:
+if has_microsoft:
     tab_labels.append("📖 Journal")
 if is_admin:
     tab_labels.append("➕ Add Questions")
+    tab_labels.append("🤖 Agent Logs")
 
-JOURNAL_IDX  = tab_labels.index("📖 Journal") if has_github else None
+JOURNAL_IDX  = tab_labels.index("📖 Journal") if has_microsoft else None
 ADMIN_IDX    = tab_labels.index("➕ Add Questions") if is_admin else None
+LOGS_IDX     = tab_labels.index("🤖 Agent Logs") if is_admin else None
 PATTERNS_IDX = tab_labels.index("📚 Patterns")
 
 tabs = st.tabs(tab_labels)
@@ -805,8 +822,76 @@ st.markdown("""
 #  TAB 0 — QUESTIONS
 # ══════════════════════════════════════════════════════════════════════════════
 with tabs[0]:
+    if st.session_state.get("questions_fetch_error"):
+        err = st.session_state.pop("questions_fetch_error")
+        st.error(f"**Could not load questions.** {err}")
+        if "UndefinedColumnError" in err or "does not exist" in err:
+            st.warning("A database column is missing. Run `alembic upgrade head` in the backend terminal to fix this.")
+
     if df.empty:
-        st.info("No problems found. Upload a markdown file to get started.")
+        if is_admin:
+            st.markdown(
+                '<div style="background:linear-gradient(135deg,#7c3aed,#6d28d9);'
+                'color:#fff;border-radius:14px;padding:20px 24px;margin-bottom:16px;">'
+                '<div style="font-size:1.1em;font-weight:800;margin-bottom:4px;">📭 No questions in the database yet</div>'
+                '<div style="font-size:.88em;opacity:.9;">Choose one of the options below to populate your question bank.</div>'
+                '</div>',
+                unsafe_allow_html=True
+            )
+
+            # ── Option 1: one-click sync from built-in file ────────────────────
+            st.markdown("**Option 1 — Sync from built-in DSA problem list** *(fastest)*")
+            st.caption("Reads `DSA_Must_Solve_Problems.md` already in the project — 200+ problems across all patterns.")
+            if st.button("⚡ Sync built-in problem list now", type="primary", use_container_width=True):
+                with st.spinner("Syncing questions from DSA_Must_Solve_Problems.md…"):
+                    try:
+                        r = requests.post(f"{API_URL}/sync_questions",
+                                          headers=auth_headers(), timeout=30)
+                        if r.status_code == 200:
+                            st.success(r.json().get("status", "Sync complete"))
+                            invalidate_cache()
+                            st.rerun()
+                        else:
+                            st.error(f"Sync failed: {r.text[:300]}")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+
+            st.divider()
+
+            # ── Option 2: upload your own file ────────────────────────────────
+            st.markdown("**Option 2 — Upload your own markdown file**")
+            st.caption("Go to the **➕ Add Questions** tab. Use 🤖 Agentic Import for any format, or Standard Import with this structure:")
+            st.code(
+                "## Two Pointers\n1. Two Sum\n2. Container With Most Water\n\n"
+                "## Sliding Window\n1. Longest Substring Without Repeating Characters",
+                language="markdown"
+            )
+
+            st.divider()
+
+            # ── Debug ─────────────────────────────────────────────────────────
+            with st.expander("🩺 Debug tools"):
+                dc1, dc2 = st.columns(2)
+                with dc1:
+                    if st.button("Check DB count", key="dbg_count_btn", use_container_width=True):
+                        try:
+                            r = requests.get(f"{API_URL}/admin/question-count",
+                                             headers=auth_headers(), timeout=5)
+                            if r.status_code == 200:
+                                cnt = r.json()["count"]
+                                if cnt > 0:
+                                    st.warning(f"{cnt} questions in DB but not loading — run `alembic upgrade head` and restart backend.")
+                                else:
+                                    st.info("DB confirmed empty — use sync or upload above.")
+                            else:
+                                st.error(r.text[:200])
+                        except Exception as e:
+                            st.error(str(e))
+                with dc2:
+                    if st.button("Force refresh", key="dbg_refresh_btn", use_container_width=True):
+                        st.rerun()
+        else:
+            st.info("No problems found. Ask your admin to upload the question bank.")
     else:
         today_str = _local_today()
         week_str  = (_local_now() + timedelta(days=7)).strftime("%Y-%m-%d")
@@ -828,7 +913,7 @@ with tabs[0]:
         st.markdown(
             '<div style="background:#fff;border:1.5px solid #f0ddd8;border-radius:14px;'
             'padding:14px 18px 2px;margin-bottom:14px;box-shadow:0 1px 4px rgba(201,123,110,.05);">'
-            '<span style="font-size:.65em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#d4a898;">🔎 Filters</span>'
+            '<span style="font-size:.65em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#a78bfa;">🔎 Filters</span>'
             '</div>',
             unsafe_allow_html=True
         )
@@ -865,7 +950,7 @@ with tabs[0]:
         elif sort_by == "Next Revision ↑":    flt = flt.sort_values('next_revision', ascending=True)
 
         st.markdown(
-            f'<p style="font-size:.78em;color:#d4a898;font-weight:600;margin-bottom:8px;">'
+            f'<p style="font-size:.78em;color:#a78bfa;font-weight:600;margin-bottom:8px;">'
             f'Showing {len(flt)} of {len(df)} problems</p>',
             unsafe_allow_html=True
         )
@@ -881,7 +966,7 @@ with tabs[0]:
 
             due_badge = badge_html("⚠ Due", "#ffe4e6", "#be123c") if is_due else ""
 
-            acc_col   = "#16a34a" if acc_val >= 80 else "#d97706" if acc_val >= 60 else "#b5615a"
+            acc_col   = "#16a34a" if acc_val >= 80 else "#d97706" if acc_val >= 60 else "#6d28d9"
             acc_bg    = "#dcfce7" if acc_val >= 80 else "#fef3c7" if acc_val >= 60 else "#fde8e3"
             hint_icon = '<span title="Hint available" style="font-size:.75em;margin-left:4px;">💡</span>' if row.get('hint') else ""
             card_html = (
@@ -938,7 +1023,7 @@ with tabs[1]:
 
     nav_m.markdown(
         f'<div style="text-align:center;font-size:1.15em;font-weight:800;'
-        f'background:linear-gradient(135deg,#c97b6e,#b5615a);'
+        f'background:linear-gradient(135deg,#7c3aed,#6d28d9);'
         f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;padding-top:5px;">'
         f'{cal_lib.month_name[st.session_state.cal_month]} {st.session_state.cal_year}</div>',
         unsafe_allow_html=True
@@ -964,20 +1049,20 @@ with tabs[1]:
     )
 
     st.markdown(
-        f'<p style="font-size:.75em;font-weight:700;color:#d4a898;letter-spacing:.8px;'
+        f'<p style="font-size:.75em;font-weight:700;color:#a78bfa;letter-spacing:.8px;'
         f'text-transform:uppercase;margin-bottom:10px;">Revisions this month — {len(month_qs)} problems</p>',
         unsafe_allow_html=True
     )
 
     if not month_qs:
-        st.markdown('<p style="color:#e8c4b8;font-size:.88em;">No revisions scheduled this month.</p>', unsafe_allow_html=True)
+        st.markdown('<p style="color:#ddd6fe;font-size:.88em;">No revisions scheduled this month.</p>', unsafe_allow_html=True)
     else:
         for q in month_qs:
             nr         = q['next_revision']
             is_over    = nr < today_str
             row_bg     = "#fff1f2" if is_over else "#fff"
             row_border = "#fca5a5" if is_over else "#f0ddd8"
-            date_col   = "#be123c" if is_over else "#c97b6e"
+            date_col   = "#be123c" if is_over else "#7c3aed"
             ov_tag     = ' <span style="color:#be123c;font-size:.7em;font-weight:700;">⚠ OVERDUE</span>' if is_over else ""
             rs         = q.get('revision_status', 'Pending')
 
@@ -987,7 +1072,7 @@ with tabs[1]:
                 f'  <span style="color:{date_col};font-weight:700;font-size:.75em;min-width:70px;">📅 {nr}</span>'
                 f'  <span style="color:#1e1b4b;font-weight:600;font-size:.84em;flex:1;">{q["title"]}{ov_tag}</span>'
                 f'  {revision_badge(rs)}'
-                f'  <span style="font-size:.78em;font-weight:800;color:{"#16a34a" if (q.get("accuracy") or 0)>=80 else "#d97706" if (q.get("accuracy") or 0)>=60 else "#b5615a"};">🎯 {q.get("accuracy") or 0:.0f}%</span>'
+                f'  <span style="font-size:.78em;font-weight:800;color:{"#16a34a" if (q.get("accuracy") or 0)>=80 else "#d97706" if (q.get("accuracy") or 0)>=60 else "#6d28d9"};">🎯 {q.get("accuracy") or 0:.0f}%</span>'
                 f'</div>',
                 unsafe_allow_html=True
             )
@@ -1001,12 +1086,12 @@ with tabs[2]:
     sbd = act.get("sessions_by_date", {})
 
     # ── Stat cards ────────────────────────────────────────────────────────────
-    def stat_card(icon, label, value, sub="", grad="linear-gradient(135deg,#c97b6e,#b5615a)"):
+    def stat_card(icon, label, value, sub="", grad="linear-gradient(135deg,#7c3aed,#6d28d9)"):
         return (
             f'<div style="background:#fff;border:1.5px solid #f0ddd8;border-radius:16px;'
             f'padding:18px 20px;box-shadow:0 2px 8px rgba(201,123,110,.07);text-align:center;">'
             f'  <div style="font-size:1.6em;margin-bottom:4px;">{icon}</div>'
-            f'  <div style="font-size:.65em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#d4a898;">{label}</div>'
+            f'  <div style="font-size:.65em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#a78bfa;">{label}</div>'
             f'  <div style="font-size:2em;font-weight:800;background:{grad};-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.2;">{value}</div>'
             f'  <div style="font-size:.72em;color:#6b7280;margin-top:2px;">{sub}</div>'
             f'</div>'
@@ -1015,9 +1100,9 @@ with tabs[2]:
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.markdown(stat_card("🔥", "Streak",          f'{act.get("streak_days", 0)}d',  "days in a row"), unsafe_allow_html=True)
     c2.markdown(stat_card("📅", "Today",            act.get("today_sessions", 0),     f'{act.get("today_time_minutes", 0)}m spent'), unsafe_allow_html=True)
-    c3.markdown(stat_card("📆", "This Week",        act.get("weekly_sessions", 0),    "sessions", "linear-gradient(135deg,#c97b6e,#e8a898)"), unsafe_allow_html=True)
-    c4.markdown(stat_card("🎯", "Total Sessions",   act.get("total_sessions", 0),     "all time",  "linear-gradient(135deg,#b5615a,#f97316)"), unsafe_allow_html=True)
-    c5.markdown(stat_card("⏱", "Total Time",       f'{act.get("total_time_minutes",0)}m', "practiced", "linear-gradient(135deg,#0ea5e9,#c97b6e)"), unsafe_allow_html=True)
+    c3.markdown(stat_card("📆", "This Week",        act.get("weekly_sessions", 0),    "sessions", "linear-gradient(135deg,#7c3aed,#c4b5fd)"), unsafe_allow_html=True)
+    c4.markdown(stat_card("🎯", "Total Sessions",   act.get("total_sessions", 0),     "all time",  "linear-gradient(135deg,#6d28d9,#f97316)"), unsafe_allow_html=True)
+    c5.markdown(stat_card("⏱", "Total Time",       f'{act.get("total_time_minutes",0)}m', "practiced", "linear-gradient(135deg,#0ea5e9,#7c3aed)"), unsafe_allow_html=True)
 
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
@@ -1028,7 +1113,7 @@ with tabs[2]:
     # ── Charts row 1: Sessions over time + Accuracy trend ────────────────────
     import plotly.graph_objects as go
 
-    PURPLE_PALETTE = ["#c97b6e", "#e8a898", "#b5615a", "#d4a898", "#e8c4b8",
+    PURPLE_PALETTE = ["#7c3aed", "#6d28d9", "#a78bfa", "#c4b5fd", "#ddd6fe",
                       "#0ea5e9", "#f97316", "#10b981", "#f59e0b", "#14b8a6"]
 
     def _chart_layout(fig, title):
@@ -1067,14 +1152,14 @@ with tabs[2]:
                 fig1.add_trace(go.Scatter(
                     x=all_dates, y=all_counts, mode="lines",
                     fill="tozeroy",
-                    line=dict(color="#c97b6e", width=2),
+                    line=dict(color="#7c3aed", width=2),
                     fillcolor="rgba(201,123,110,0.12)",
                     name="Sessions",
                 ))
                 fig1 = _chart_layout(fig1, "Sessions over time (last 60 days)")
                 st.plotly_chart(fig1, use_container_width=True, config={"displayModeBar": False})
         else:
-            st.markdown('<p style="color:#e8c4b8;font-size:.88em;">No session data yet.</p>', unsafe_allow_html=True)
+            st.markdown('<p style="color:#ddd6fe;font-size:.88em;">No session data yet.</p>', unsafe_allow_html=True)
 
     # Chart 2 — Accuracy trend (correct vs wrong per day)
     with ch2:
@@ -1092,13 +1177,13 @@ with tabs[2]:
             ))
             fig2.add_trace(go.Scatter(
                 x=all_ac_dates, y=wrong_vals, mode="lines+markers",
-                name="Wrong", line=dict(color="#b5615a", width=2),
+                name="Wrong", line=dict(color="#6d28d9", width=2),
                 marker=dict(size=5),
             ))
             fig2 = _chart_layout(fig2, "Accuracy trend — correct vs wrong per day")
             st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
         else:
-            st.markdown('<p style="color:#e8c4b8;font-size:.88em;">No accuracy data yet.</p>', unsafe_allow_html=True)
+            st.markdown('<p style="color:#ddd6fe;font-size:.88em;">No accuracy data yet.</p>', unsafe_allow_html=True)
 
     # ── Charts row 2: Pattern donut + Time per pattern ────────────────────────
     ch3, ch4 = st.columns(2)
@@ -1123,7 +1208,7 @@ with tabs[2]:
             )
             st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar": False})
         else:
-            st.markdown('<p style="color:#e8c4b8;font-size:.88em;">No pattern data yet.</p>', unsafe_allow_html=True)
+            st.markdown('<p style="color:#ddd6fe;font-size:.88em;">No pattern data yet.</p>', unsafe_allow_html=True)
 
     # Chart 4 — Time spent per pattern (horizontal bar, top 10)
     with ch4:
@@ -1136,7 +1221,7 @@ with tabs[2]:
                 x=minutes, y=patterns, orientation="h",
                 marker=dict(
                     color=minutes,
-                    colorscale=[[0, "#f5d5c8"], [0.5, "#e8a898"], [1, "#c97b6e"]],
+                    colorscale=[[0, "#ede9fe"], [0.5, "#c4b5fd"], [1, "#7c3aed"]],
                     showscale=False,
                 ),
                 text=[f"{m}m" for m in minutes],
@@ -1151,19 +1236,19 @@ with tabs[2]:
             )
             st.plotly_chart(fig4, use_container_width=True, config={"displayModeBar": False})
         else:
-            st.markdown('<p style="color:#e8c4b8;font-size:.88em;">No time data yet.</p>', unsafe_allow_html=True)
+            st.markdown('<p style="color:#ddd6fe;font-size:.88em;">No time data yet.</p>', unsafe_allow_html=True)
 
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
     # ── Recent sessions feed ──────────────────────────────────────────────────
     st.markdown(
         '<div style="font-size:.7em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
-        'color:#c97b6e;margin-bottom:10px;">📋 Recent Sessions</div>',
+        'color:#7c3aed;margin-bottom:10px;">📋 Recent Sessions</div>',
         unsafe_allow_html=True
     )
     recent = act.get("recent_sessions", [])
     if not recent:
-        st.markdown('<p style="color:#e8c4b8;font-size:.88em;">No sessions yet — start practicing!</p>', unsafe_allow_html=True)
+        st.markdown('<p style="color:#ddd6fe;font-size:.88em;">No sessions yet — start practicing!</p>', unsafe_allow_html=True)
     else:
         feed_col, _ = st.columns([0.6, 0.4])
         with feed_col:
@@ -1177,7 +1262,7 @@ with tabs[2]:
                 except:
                     day_fmt = day
                 st.markdown(
-                    f'<div style="font-size:.72em;font-weight:700;color:#d4a898;'
+                    f'<div style="font-size:.72em;font-weight:700;color:#a78bfa;'
                     f'letter-spacing:.5px;text-transform:uppercase;margin:10px 0 5px;">{day_fmt}</div>',
                     unsafe_allow_html=True
                 )
@@ -1196,7 +1281,7 @@ with tabs[2]:
                         f'    padding:2px 7px;font-size:.7em;font-weight:700;">{ok_icon}</span>'
                         f'  <div style="flex:1;min-width:0;">'
                         f'    <div style="font-weight:600;font-size:.84em;color:#1e1b4b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{title}</div>'
-                        f'    <div style="font-size:.72em;color:#d4a898;margin-top:1px;">{pattern}</div>'
+                        f'    <div style="font-size:.72em;color:#a78bfa;margin-top:1px;">{pattern}</div>'
                         f'  </div>'
                         f'  <span style="font-size:.75em;color:#6b7280;white-space:nowrap;">⏱ {mins}m</span>'
                         f'</div>',
@@ -1210,7 +1295,7 @@ with tabs[2]:
 with tabs[3]:
     st.markdown(
         '<p style="font-size:.7em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
-        'color:#c97b6e;margin-bottom:16px;">Practice Schedule</p>',
+        'color:#7c3aed;margin-bottom:16px;">Practice Schedule</p>',
         unsafe_allow_html=True
     )
 
@@ -1280,7 +1365,7 @@ with tabs[3]:
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
     st.markdown(
         '<p style="font-size:.7em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
-        'color:#c97b6e;margin-bottom:16px;">Notification Settings</p>',
+        'color:#7c3aed;margin-bottom:16px;">Notification Settings</p>',
         unsafe_allow_html=True
     )
 
@@ -1342,9 +1427,9 @@ with tabs[3]:
             placeholder="e.g. 123456789",
         )
         st.markdown(
-            '<div style="background:#242838;border-left:3px solid #e8a898;border-radius:0 8px 8px 0;'
+            '<div style="background:#1e1b4b;border-left:3px solid #c4b5fd;border-radius:0 8px 8px 0;'
             'padding:10px 14px;font-size:.76em;color:#f0e8e5;line-height:1.8;margin-top:2px;">'
-            '<b style="color:#e8a898;">How to find your Chat ID:</b><br>'
+            '<b style="color:#c4b5fd;">How to find your Chat ID:</b><br>'
             '1. Open Telegram → search <b>@dsa_planner_bot</b> → send <code>/start</code><br>'
             '2. Then open <b>@userinfobot</b> → send <code>/start</code><br>'
             '3. It replies with <b>Your user ID: 123456789</b> — paste that number above'
@@ -1399,7 +1484,7 @@ with tabs[PATTERNS_IDX]:
     def _sec(title):
         st.markdown(
             f'<p style="font-size:.62em;font-weight:700;letter-spacing:1px;'
-            f'text-transform:uppercase;color:#c97b6e;margin:18px 0 6px;">{title}</p>',
+            f'text-transform:uppercase;color:#7c3aed;margin:18px 0 6px;">{title}</p>',
             unsafe_allow_html=True,
         )
 
@@ -1415,10 +1500,10 @@ with tabs[PATTERNS_IDX]:
     def _overview(tagline, mental_model, complexity):
         st.markdown(
             f'<div style="background:linear-gradient(135deg,#f0ddd8,#fde8e3);'
-            f'border:1.5px solid #e8c4b8;border-radius:14px;padding:16px 20px;margin-bottom:6px;">'
+            f'border:1.5px solid #ddd6fe;border-radius:14px;padding:16px 20px;margin-bottom:6px;">'
             f'<div style="font-size:.82em;font-style:italic;color:#8b4a42;margin-bottom:8px;">{tagline}</div>'
             f'<div style="font-size:.88em;color:#1e1b4b;line-height:1.7;">{mental_model}</div>'
-            f'<div style="margin-top:10px;font-size:.78em;color:#c97b6e;font-weight:600;">'
+            f'<div style="margin-top:10px;font-size:.78em;color:#7c3aed;font-weight:600;">'
             f'⏱ Typical complexity: {complexity}</div>'
             f'</div>',
             unsafe_allow_html=True,
@@ -1432,7 +1517,7 @@ with tabs[PATTERNS_IDX]:
             st.code(code, language="python")
             if insight:
                 st.markdown(
-                    f'<div style="background:#fdf5f2;border-left:3px solid #e8a898;'
+                    f'<div style="background:#f5f3ff;border-left:3px solid #c4b5fd;'
                     f'border-radius:0 8px 8px 0;padding:8px 12px;font-size:.83em;'
                     f'color:#581c87;line-height:1.6;margin-top:6px;">💡 {insight}</div>',
                     unsafe_allow_html=True,
@@ -1455,14 +1540,14 @@ with tabs[PATTERNS_IDX]:
 
         if saved_memo:
             st.markdown(
-                f'<div style="background:#fdf5f2;border:1.5px solid #f0e8e5;border-radius:12px;'
+                f'<div style="background:#f5f3ff;border:1.5px solid #f0e8e5;border-radius:12px;'
                 f'padding:12px 16px;font-size:.86em;color:#3b0764;line-height:1.8;'
                 f'white-space:pre-wrap;">{saved_memo}</div>',
                 unsafe_allow_html=True,
             )
         else:
             st.markdown(
-                '<p style="font-size:.82em;color:#d4a898;font-style:italic;">No memory tricks saved yet — generate some below.</p>',
+                '<p style="font-size:.82em;color:#a78bfa;font-style:italic;">No memory tricks saved yet — generate some below.</p>',
                 unsafe_allow_html=True,
             )
 
@@ -1532,7 +1617,7 @@ with tabs[PATTERNS_IDX]:
                 else:
                     bubbles += (
                         f'<div style="display:flex;justify-content:flex-start;margin-bottom:6px;">'
-                        f'<div style="background:#fdf5f2;border:1px solid #e8c4b8;color:#1e1b4b;'
+                        f'<div style="background:#f5f3ff;border:1px solid #ddd6fe;color:#1e1b4b;'
                         f'border-radius:14px 14px 14px 2px;'
                         f'padding:7px 12px;font-size:.82em;max-width:80%;line-height:1.5;white-space:pre-wrap;">'
                         f'{msg["content"]}</div></div>'
@@ -1545,7 +1630,7 @@ with tabs[PATTERNS_IDX]:
             )
         else:
             st.markdown(
-                f'<p style="font-size:.8em;color:#d4a898;font-style:italic;margin-bottom:6px;">'
+                f'<p style="font-size:.8em;color:#a78bfa;font-style:italic;margin-bottom:6px;">'
                 f'Ask anything about the {pattern_name} pattern — concepts, edge cases, when to use it…</p>',
                 unsafe_allow_html=True,
             )
@@ -2591,62 +2676,51 @@ def kmp_search(text, pattern):
         _pattern_footer("String")
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  TAB — PRACTICE JOURNAL  (GitHub-connected users only)
+#  TAB — PRACTICE JOURNAL  (Microsoft-connected users — stored in OneDrive)
 # ══════════════════════════════════════════════════════════════════════════════
-if has_github and JOURNAL_IDX is not None:
+if has_microsoft and JOURNAL_IDX is not None:
     with tabs[JOURNAL_IDX]:
-
-        gh_user  = st.session_state.get("github_username", "")
-        repo_url = f"https://github.com/{gh_user}/dsa-planner-data"
 
         # ── Top bar ───────────────────────────────────────────────────────────
         jh1, jh2, jh3, jh4, jh5 = st.columns([2, 1.5, 1, 1, 0.7])
         with jh1:
-            search_q = st.text_input("", "", key="jrn_search",
+            search_q = st.text_input("Search", "", key="jrn_search",
                                      placeholder="🔍 Search question…",
                                      label_visibility="collapsed")
         with jh2:
-            result_filter = st.selectbox("", ["All", "Correct ✅", "Incorrect ❌"],
+            result_filter = st.selectbox("Result filter", ["All", "Correct ✅", "Incorrect ❌"],
                                          key="jrn_filter", label_visibility="collapsed")
         with jh3:
             pat_opts = ["All patterns"]
-            _raw = st.session_state.get("gh_journal", [])
+            _raw = st.session_state.get("sp_journal", [])
             pat_opts += sorted({s.get("pattern","") for s in _raw if s.get("pattern")})
-            pat_filter = st.selectbox("", pat_opts, key="jrn_pat", label_visibility="collapsed")
+            pat_filter = st.selectbox("Pattern filter", pat_opts, key="jrn_pat", label_visibility="collapsed")
         with jh4:
-            page_size = st.selectbox("", [25, 50, 100], key="jrn_pgsz",
+            page_size = st.selectbox("Page size", [25, 50, 100], key="jrn_pgsz",
                                      label_visibility="collapsed",
                                      format_func=lambda x: f"{x} / page")
         with jh5:
-            if st.button("🔄", help="Refresh from GitHub", use_container_width=True):
-                st.session_state.pop("gh_journal", None)
+            if st.button("🔄", help="Refresh from OneDrive", use_container_width=True):
+                st.session_state.pop("sp_journal", None)
                 st.session_state.jrn_page = 0
                 st.rerun()
 
-        # ── Ensure repo exists ────────────────────────────────────────────────
-        if not st.session_state.get("gh_repo_ensured"):
-            try:
-                requests.post(f"{API_URL}/github/setup", headers=auth_headers(), timeout=15)
-                st.session_state.gh_repo_ensured = True
-            except Exception:
-                pass
-
-        # ── Fetch ─────────────────────────────────────────────────────────────
-        if "gh_journal" not in st.session_state:
-            with st.spinner("Fetching sessions from GitHub…"):
+        # ── Fetch from SharePoint/OneDrive ────────────────────────────────────
+        if "sp_journal" not in st.session_state:
+            with st.spinner("Fetching sessions from OneDrive…"):
                 try:
-                    r = requests.get(f"{API_URL}/github/history",
+                    r = requests.get(f"{API_URL}/sharepoint/history",
                                      headers=auth_headers(), timeout=30)
-                    st.session_state.gh_journal = (
+                    st.session_state.sp_journal = (
                         r.json().get("sessions", []) if r.status_code == 200 else []
                     )
                     if r.status_code != 200:
-                        st.error("Could not load sessions from GitHub.")
+                        st.error("Could not load sessions from OneDrive.")
                 except Exception as e:
-                    st.session_state.gh_journal = []
+                    st.session_state.sp_journal = []
                     st.error(f"Error: {e}")
 
-        sessions = st.session_state.get("gh_journal", [])
+        sessions = st.session_state.get("sp_journal", [])
 
         if not sessions:
             st.info("No practice sessions yet. Complete a session to start tracking!")
@@ -2687,8 +2761,8 @@ if has_github and JOURNAL_IDX is not None:
                 f'<span style="font-size:.78em;color:#6b7280;">'
                 f'  avg ⏱ {avg_min}m {avg_s}s'
                 f'</span>'
-                f'<span style="margin-left:auto;font-size:.72em;color:#d4a898;">'
-                f'  <a href="{repo_url}" target="_blank" style="color:#d4a898;text-decoration:none;">'
+                f'<span style="margin-left:auto;font-size:.72em;color:#a78bfa;">'
+                f'  <a href="{repo_url}" target="_blank" style="color:#a78bfa;text-decoration:none;">'
                 f'  🔗 {gh_user}/dsa-planner-data</a>'
                 f'</span>'
                 f'</div>',
@@ -2719,7 +2793,7 @@ if has_github and JOURNAL_IDX is not None:
                     st.markdown(
                         f'<div style="display:flex;align-items:center;gap:8px;'
                         f'margin:14px 0 4px;">'
-                        f'<span style="font-size:.68em;font-weight:700;color:#c97b6e;'
+                        f'<span style="font-size:.68em;font-weight:700;color:#7c3aed;'
                         f'white-space:nowrap;">📅 {d_fmt}</span>'
                         f'<div style="flex:1;height:1px;background:#f0ddd8;"></div>'
                         f'</div>',
@@ -2751,7 +2825,7 @@ if has_github and JOURNAL_IDX is not None:
                     with lc:
                         st.markdown(
                             '<p style="font-size:.62em;font-weight:700;letter-spacing:.8px;'
-                            'text-transform:uppercase;color:#c97b6e;margin:0 0 4px;">💡 Logic</p>',
+                            'text-transform:uppercase;color:#7c3aed;margin:0 0 4px;">💡 Logic</p>',
                             unsafe_allow_html=True)
                         if logic:
                             st.markdown(
@@ -2765,7 +2839,7 @@ if has_github and JOURNAL_IDX is not None:
                     with rc:
                         st.markdown(
                             '<p style="font-size:.62em;font-weight:700;letter-spacing:.8px;'
-                            'text-transform:uppercase;color:#c97b6e;margin:0 0 4px;">💻 Code</p>',
+                            'text-transform:uppercase;color:#7c3aed;margin:0 0 4px;">💻 Code</p>',
                             unsafe_allow_html=True)
                         if code:
                             st.code(code, language="python")
@@ -2776,10 +2850,10 @@ if has_github and JOURNAL_IDX is not None:
                     if gap_text:
                         st.markdown(
                             f'<div style="background:linear-gradient(135deg,#1a0533,#252840);'
-                            f'border-left:3px solid #c97b6e;border-radius:0 10px 10px 0;'
+                            f'border-left:3px solid #7c3aed;border-radius:0 10px 10px 0;'
                             f'padding:10px 14px;margin-top:8px;">'
                             f'<div style="font-size:.6em;font-weight:700;letter-spacing:1px;'
-                            f'text-transform:uppercase;color:#c97b6e;margin-bottom:6px;">🔍 Gap Analysis</div>'
+                            f'text-transform:uppercase;color:#7c3aed;margin-bottom:6px;">🔍 Gap Analysis</div>'
                             f'<div style="font-size:.82em;color:#fde8e3;line-height:1.7;">{gap_text}</div>'
                             f'</div>',
                             unsafe_allow_html=True,
@@ -2817,7 +2891,7 @@ if has_github and JOURNAL_IDX is not None:
                     st.session_state.jrn_page -= 1; st.rerun()
                 pg3.markdown(
                     f'<div style="text-align:center;padding-top:6px;font-size:.82em;'
-                    f'color:#c97b6e;font-weight:600;">Page {page+1} / {total_pages}</div>',
+                    f'color:#7c3aed;font-weight:600;">Page {page+1} / {total_pages}</div>',
                     unsafe_allow_html=True)
                 if pg4.button("Next ▶",  use_container_width=True, disabled=(page >= total_pages-1)):
                     st.session_state.jrn_page += 1; st.rerun()
@@ -2830,29 +2904,50 @@ if has_github and JOURNAL_IDX is not None:
 # ══════════════════════════════════════════════════════════════════════════════
 if is_admin and ADMIN_IDX is not None:
     with tabs[ADMIN_IDX]:
+
         st.markdown(
-            '<div style="background:#fff;border:2px dashed #e8c4b8;border-radius:16px;'
-            'padding:28px 28px 12px;text-align:center;margin-bottom:16px;">'
+            '<div style="background:#ffffff;border:2px dashed #ddd6fe;border-radius:16px;'
+            'padding:24px 28px 16px;text-align:center;margin-bottom:20px;">'
             '<div style="font-size:1.5em;margin-bottom:6px;">📄</div>'
-            '<div style="font-weight:700;font-size:1.05em;color:#3b0764;margin-bottom:4px;">Upload Markdown File</div>'
-            '<div style="font-size:.85em;color:#c97b6e;margin-bottom:8px;">Parse DSA questions directly from your notes</div>'
+            '<div style="font-weight:700;font-size:1.05em;color:#2e1065;margin-bottom:4px;">Upload Markdown File</div>'
+            '<div style="font-size:.85em;color:#7c3aed;">Import DSA questions from your notes</div>'
             '</div>',
             unsafe_allow_html=True
         )
-        uploaded_md = st.file_uploader("Choose a .md file", type=["md"], label_visibility="collapsed")
-        upload_btn  = st.button("⬆ Upload and Add Questions", disabled=uploaded_md is None, type="primary")
 
-        if upload_btn and uploaded_md:
-            with st.spinner("Processing..."):
+        uploaded_md = st.file_uploader("Choose a .md file", type=["md"], label_visibility="collapsed")
+
+        col_std, col_ai = st.columns(2)
+        with col_std:
+            std_btn = st.button(
+                "⬆ Standard Import",
+                disabled=uploaded_md is None,
+                use_container_width=True,
+                help="Fast parse — titles and patterns only, no AI enrichment",
+            )
+        with col_ai:
+            ai_btn = st.button(
+                "🤖 Agentic Import",
+                disabled=uploaded_md is None,
+                use_container_width=True,
+                type="primary",
+                help="AI agent classifies each question, generates hints, skips duplicates intelligently",
+            )
+
+        # ── Standard import ───────────────────────────────────────────────────
+        if std_btn and uploaded_md:
+            with st.spinner("Importing…"):
                 try:
                     resp = requests.post(
                         f"{API_URL}/upload_md",
                         files={"file": (uploaded_md.name, uploaded_md.getvalue(), "text/markdown")},
                         headers=auth_headers(),
+                        timeout=30,
                     )
                     if resp.status_code == 200:
                         r = resp.json()
-                        st.success(f"✅ Added **{r['added']}** new questions. Total: **{r['total']}**")
+                        st.success(f"✅ Added **{r['added']}** new questions. Total in DB: **{r['total']}**")
+                        invalidate_cache()
                         st.rerun()
                     elif resp.status_code == 403:
                         st.error("Admin access required.")
@@ -2860,6 +2955,264 @@ if is_admin and ADMIN_IDX is not None:
                         st.error(f"Upload failed: {resp.text}")
                 except Exception as e:
                     st.error(f"Error: {e}")
+
+        # ── Agentic import ────────────────────────────────────────────────────
+        if ai_btn and uploaded_md:
+            with st.spinner("🤖 Agent is reading the file, checking duplicates, classifying questions and generating hints… this takes 30–60 seconds."):
+                try:
+                    resp = requests.post(
+                        f"{API_URL}/upload_md/agentic",
+                        files={"file": (uploaded_md.name, uploaded_md.getvalue(), "text/markdown")},
+                        headers=auth_headers(),
+                        timeout=180,
+                    )
+                    if resp.status_code == 200:
+                        r = resp.json()
+                        invalidate_cache()
+
+                        # ── Summary banner ────────────────────────────────────
+                        st.markdown(
+                            f'<div style="background:linear-gradient(135deg,#7c3aed,#6d28d9);'
+                            f'color:#fff;border-radius:14px;padding:18px 22px;margin-bottom:16px;">'
+                            f'<div style="font-size:1.1em;font-weight:800;margin-bottom:4px;">🤖 Agentic Import Complete</div>'
+                            f'<div style="font-size:.9em;opacity:.9;">{r.get("summary","")}</div>'
+                            f'</div>',
+                            unsafe_allow_html=True
+                        )
+
+                        mc1, mc2, mc3 = st.columns(3)
+                        mc1.metric("✅ Added", r.get("total_added", 0))
+                        mc2.metric("⏭ Skipped (duplicates)", r.get("total_skipped", 0))
+                        mc3.metric("🔧 Tool calls made", r.get("total_tool_calls", 0))
+
+                        # ── Agent tool call trace ─────────────────────────────
+                        trace = r.get("trace", [])
+                        if trace:
+                            with st.expander(f"🔍 Agent trace — {len(trace)} tool calls (click to see how the agent worked)", expanded=False):
+                                st.markdown(
+                                    '<div style="font-size:.78em;color:#a78bfa;margin-bottom:12px;">'
+                                    'Every decision the agent made — what it called, with what inputs, and what it got back.</div>',
+                                    unsafe_allow_html=True
+                                )
+                                for t in trace:
+                                    tool  = t["tool"]
+                                    step  = t["step"]
+                                    inp   = t["input"]
+                                    summ  = t["result_summary"]
+
+                                    is_error = t.get("is_error", False)
+
+                                    # Icon and color per tool
+                                    if is_error:
+                                        icon, bg = "❌", "#fff1f2"
+                                        label = f'{tool}() — ERROR'
+                                    elif tool == "get_existing_titles":
+                                        icon, bg, label = "🗄", "#f5f3ff", "get_existing_titles()"
+                                    elif tool == "get_existing_patterns":
+                                        icon, bg, label = "🏷", "#f5f3ff", "get_existing_patterns()"
+                                    elif tool == "add_question":
+                                        status = t.get("status")
+                                        if status == "added":
+                                            icon, bg = "✅", "#f0fdf4"
+                                        elif status == "duplicate":
+                                            icon, bg = "⏭", "#fefce8"
+                                        else:
+                                            icon, bg = "⚠️", "#fff1f2"
+                                        label = f'add_question("{inp.get("title","")}")'
+                                    else:
+                                        icon, bg, label = "🔧", "#f5f3ff", tool
+
+                                    # Input args (compact)
+                                    if tool == "add_question":
+                                        args_str = (
+                                            f'pattern="{inp.get("pattern","")}" · '
+                                            f'difficulty="{inp.get("difficulty","")}" · '
+                                            f'category="{inp.get("category","")}"'
+                                        )
+                                    elif inp:
+                                        args_str = ""
+                                    else:
+                                        args_str = "no arguments"
+
+                                    border_color = "#ef4444" if is_error else "#7c3aed"
+                                    summ_color   = "#dc2626" if is_error else "#7c3aed"
+                                    error_detail = t.get("error_detail", "")
+
+                                    st.markdown(
+                                        f'<div style="background:{bg};border-radius:10px;'
+                                        f'padding:10px 14px;margin-bottom:6px;'
+                                        f'border-left:3px solid {border_color};">'
+                                        f'<div style="display:flex;align-items:center;gap:8px;">'
+                                        f'  <span style="font-size:.7em;color:#a78bfa;'
+                                        f'    background:#f5f3ff;border-radius:10px;padding:1px 7px;'
+                                        f'    font-weight:700;">Step {step}</span>'
+                                        f'  <span style="font-size:.82em;font-weight:700;'
+                                        f'    color:#2e1065;font-family:monospace;">{icon} {label}</span>'
+                                        f'</div>'
+                                        + (f'<div style="font-size:.72em;color:#6d28d9;margin-top:4px;'
+                                           f'font-family:monospace;opacity:.8;">{args_str}</div>' if args_str else "")
+                                        + f'<div style="font-size:.75em;color:{summ_color};margin-top:5px;">'
+                                        f'  ↳ {summ}</div>'
+                                        + (f'<div style="font-size:.72em;color:#dc2626;margin-top:4px;'
+                                           f'background:#fef2f2;border-radius:6px;padding:4px 8px;'
+                                           f'font-family:monospace;">{error_detail}</div>' if error_detail else "")
+                                        + f'</div>',
+                                        unsafe_allow_html=True
+                                    )
+
+                        # ── Added questions detail ────────────────────────────
+                        if r.get("added"):
+                            with st.expander(f"✅ {r['total_added']} questions added — click to expand", expanded=True):
+                                for q in r["added"]:
+                                    st.markdown(
+                                        f'<div style="border-left:3px solid #7c3aed;'
+                                        f'padding:8px 12px;margin-bottom:8px;border-radius:0 8px 8px 0;'
+                                        f'background:#f5f3ff;">'
+                                        f'<div style="font-weight:700;color:#2e1065;font-size:.95em;">{q["title"]}</div>'
+                                        f'<div style="font-size:.78em;color:#7c3aed;margin-top:2px;">'
+                                        f'🧩 {q["pattern"]} &nbsp;·&nbsp; '
+                                        f'{"🟢" if q["difficulty"]=="Easy" else "🟡" if q["difficulty"]=="Medium" else "🔴"} {q["difficulty"]}'
+                                        f'</div>'
+                                        f'<div style="font-size:.78em;color:#6d28d9;margin-top:4px;font-style:italic;">'
+                                        f'💡 {q["hint"]}</div>'
+                                        f'</div>',
+                                        unsafe_allow_html=True
+                                    )
+
+                        # ── Skipped questions detail ──────────────────────────
+                        if r.get("skipped_duplicates"):
+                            with st.expander(f"⏭ {r['total_skipped']} duplicates skipped"):
+                                for title in r["skipped_duplicates"]:
+                                    st.markdown(
+                                        f'<div style="font-size:.85em;color:#a78bfa;'
+                                        f'padding:4px 0;border-bottom:1px solid #f5f3ff;">'
+                                        f'— {title}</div>',
+                                        unsafe_allow_html=True
+                                    )
+
+                        st.rerun()
+
+                    elif resp.status_code == 503:
+                        st.error("OPENAI_API_KEY not configured — agentic import unavailable.")
+                    elif resp.status_code == 403:
+                        st.error("Admin access required.")
+                    else:
+                        st.error(f"Agentic import failed: {resp.text}")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  TAB — AGENT LOGS  (admin only — live proof of agents running)
+# ══════════════════════════════════════════════════════════════════════════════
+if is_admin and LOGS_IDX is not None:
+    with tabs[LOGS_IDX]:
+
+        st.markdown(
+            '<div style="background:linear-gradient(135deg,#2e1065,#1e1b4b);'
+            'color:#fff;border-radius:14px;padding:18px 24px;margin-bottom:20px;">'
+            '<div style="font-size:1.1em;font-weight:800;margin-bottom:4px;">🤖 Live Agent Activity Log</div>'
+            '<div style="font-size:.85em;opacity:.85;">Every tool call made by every agent — '
+            'session insight, study coach, weekly summary, admin upload.</div>'
+            '</div>',
+            unsafe_allow_html=True
+        )
+
+        lcol1, lcol2, lcol3 = st.columns([1, 1, 2])
+        with lcol1:
+            if st.button("🔄 Refresh logs", use_container_width=True, type="primary"):
+                st.rerun()
+        with lcol2:
+            if st.button("🗑 Clear logs", key="agent_logs_clear_btn", use_container_width=True):
+                try:
+                    requests.delete(f"{API_URL}/admin/agent-logs",
+                                    headers=auth_headers(), timeout=5)
+                    st.rerun()
+                except Exception:
+                    pass
+        with lcol3:
+            st.caption("Logs are in-memory — cleared on backend restart. Trigger an agent to see entries appear.")
+
+        # ── Fetch logs ────────────────────────────────────────────────────────
+        try:
+            lr = requests.get(f"{API_URL}/admin/agent-logs",
+                              headers=auth_headers(), timeout=5)
+            logs = lr.json().get("logs", []) if lr.status_code == 200 else []
+        except Exception as e:
+            logs = []
+            st.error(f"Could not fetch logs: {e}")
+
+        if not logs:
+            st.markdown(
+                '<div style="text-align:center;padding:40px;color:#a78bfa;font-size:.9em;">'
+                '📭 No agent activity yet.<br><br>'
+                'Trigger an agent to see logs here:<br>'
+                '• Upload a markdown file with <b>🤖 Agentic Import</b><br>'
+                '• Log a practice session (session insight agent fires)<br>'
+                '• Use the MCP server in Claude Code: <code>run_study_coach(user_id=1)</code>'
+                '</div>',
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(f"**{len(logs)} log entries** — most recent last")
+            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+            # Agent colour map
+            agent_colors = {
+                "admin-upload-agent": "#7c3aed",
+                "study-agent":        "#0ea5e9",
+                "sharepoint-agent":   "#16a34a",
+                "teams-agent":        "#d97706",
+                "calendar-agent":     "#dc2626",
+            }
+
+            for entry in reversed(logs):  # newest first
+                agent   = entry.get("agent", "agent")
+                etype   = entry.get("type", "")
+                icon    = entry.get("icon", "•")
+                label   = entry.get("label", "")
+                detail  = entry.get("detail", "")
+                t       = entry.get("time", "")
+                step    = entry.get("step")
+                is_err  = entry.get("is_error", False)
+
+                agent_color = agent_colors.get(agent, "#7c3aed")
+
+                if etype == "start":
+                    bg, border = "#f5f3ff", agent_color
+                elif etype == "end":
+                    bg, border = "#f0fdf4", "#16a34a"
+                elif is_err:
+                    bg, border = "#fff1f2", "#ef4444"
+                elif etype == "tool_result":
+                    bg, border = "#ffffff", "#e2e8f0"
+                else:  # tool_call
+                    bg, border = "#fafafa", agent_color
+
+                step_badge = (f'<span style="font-size:.65em;background:#f5f3ff;'
+                              f'color:{agent_color};border-radius:8px;padding:1px 6px;'
+                              f'font-weight:700;margin-right:6px;">step {step}</span>'
+                              if step is not None and etype == "tool_call" else "")
+
+                agent_badge = (f'<span style="font-size:.62em;background:{agent_color}22;'
+                               f'color:{agent_color};border-radius:8px;padding:1px 7px;'
+                               f'font-weight:700;margin-right:6px;">{agent}</span>')
+
+                st.markdown(
+                    f'<div style="background:{bg};border-left:3px solid {border};'
+                    f'border-radius:0 10px 10px 0;padding:8px 14px;margin-bottom:4px;">'
+                    f'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+                    f'  <span style="font-size:.68em;color:#94a3b8;">{t}</span>'
+                    f'  {agent_badge}'
+                    f'  {step_badge}'
+                    f'  <span style="font-size:.82em;font-weight:700;color:#1e1b4b;'
+                    f'    font-family:monospace;">{icon} {label}</span>'
+                    f'</div>'
+                    f'<div style="font-size:.78em;color:{"#dc2626" if is_err else "#6d28d9"};'
+                    f'margin-top:3px;font-family:monospace;">{detail}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2883,7 +3236,7 @@ if st.session_state.get("view_last_qid") and not st.session_state.get("active_qi
 
         if rec is None:
             st.markdown(
-                '<div style="font-size:.88em;color:#c97b6e;padding:20px 0;">'
+                '<div style="font-size:.88em;color:#7c3aed;padding:20px 0;">'
                 '📭 No practice record found for this question yet.<br>'
                 'Hit <b>Practice →</b> to create your first session!</div>',
                 unsafe_allow_html=True,
@@ -2901,7 +3254,7 @@ if st.session_state.get("view_last_qid") and not st.session_state.get("active_qi
                 f'<div style="display:flex;align-items:center;gap:8px;'
                 f'padding:4px 0 8px;border-bottom:1px solid #252840;margin-bottom:10px;">'
                 f'<div style="flex:1;min-width:0;font-size:.95em;font-weight:800;'
-                f'background:linear-gradient(90deg,#e8a898,#c97b6e);'
+                f'background:linear-gradient(90deg,#c4b5fd,#7c3aed);'
                 f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;'
                 f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">📖 {rec["question_title"]}</div>'
                 + (f'<div style="background:#1e2235;border:1px solid #2d3348;border-radius:6px;'
@@ -2916,13 +3269,13 @@ if st.session_state.get("view_last_qid") and not st.session_state.get("active_qi
             secs_lr = (rec.get("time_taken") or 0) % 60
             ok_lr   = rec.get("correct", True)
             st.markdown(
-                f'<div style="background:#242838;border:1px solid #2d3348;border-radius:12px;'
+                f'<div style="background:#1e1b4b;border:1px solid #2d3348;border-radius:12px;'
                 f'padding:10px 14px;margin-bottom:12px;display:flex;gap:16px;flex-wrap:wrap;">'
-                f'  <span style="font-size:.78em;color:#d4a898;">📅 {rec.get("date","—")}</span>'
+                f'  <span style="font-size:.78em;color:#a78bfa;">📅 {rec.get("date","—")}</span>'
                 f'  <span style="font-size:.78em;color:{"#86efac" if ok_lr else "#f9a8d4"};">'
                 f'    {"✅ Correct" if ok_lr else "❌ Needs Work"}</span>'
-                f'  <span style="font-size:.78em;color:#d4a898;">⏱ {mins_lr}m {secs_lr}s</span>'
-                f'  <span style="font-size:.78em;color:#c97b6e;">{rec.get("pattern","")}</span>'
+                f'  <span style="font-size:.78em;color:#a78bfa;">⏱ {mins_lr}m {secs_lr}s</span>'
+                f'  <span style="font-size:.78em;color:#7c3aed;">{rec.get("pattern","")}</span>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -3038,7 +3391,7 @@ if st.session_state.active_qid:
                 f'padding:4px 0 10px;border-bottom:1px solid #252840;margin-bottom:10px;flex-wrap:wrap;">'
                 # Title
                 f'<div style="flex:1;min-width:0;font-size:.9em;font-weight:800;'
-                f'background:linear-gradient(90deg,#e8a898,#c97b6e);'
+                f'background:linear-gradient(90deg,#c4b5fd,#7c3aed);'
                 f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;'
                 f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">📝 {q["title"]}</div>'
                 # Position indicator
@@ -3048,22 +3401,22 @@ if st.session_state.active_qid:
                 # Timer pill
                 + f'<div style="background:#1e2235;border:1px solid #8b4a42;border-radius:8px;'
                 f'padding:3px 10px;text-align:center;flex-shrink:0;">'
-                f'<div style="font-size:.48em;color:#d4a898;letter-spacing:.8px;text-transform:uppercase;line-height:1.2;">Time</div>'
-                f'<div style="font-size:.92em;font-weight:800;letter-spacing:2px;color:#e8a898;line-height:1.3;">{mins:02d}:{secs:02d}</div></div>'
+                f'<div style="font-size:.48em;color:#a78bfa;letter-spacing:.8px;text-transform:uppercase;line-height:1.2;">Time</div>'
+                f'<div style="font-size:.92em;font-weight:800;letter-spacing:2px;color:#c4b5fd;line-height:1.3;">{mins:02d}:{secs:02d}</div></div>'
                 # Accuracy pill
                 f'<div style="background:#1e2235;border:1px solid #2d3348;border-radius:8px;'
                 f'padding:3px 10px;text-align:center;flex-shrink:0;">'
-                f'<div style="font-size:.48em;color:#c97b6e;letter-spacing:.8px;text-transform:uppercase;line-height:1.2;">Acc</div>'
+                f'<div style="font-size:.48em;color:#7c3aed;letter-spacing:.8px;text-transform:uppercase;line-height:1.2;">Acc</div>'
                 f'<div style="font-size:.92em;font-weight:700;color:{acc_color};line-height:1.3;">{acc_val:.0f}%</div></div>'
                 # Interval pill
                 f'<div style="background:#1e2235;border:1px solid #2d3348;border-radius:8px;'
                 f'padding:3px 10px;text-align:center;flex-shrink:0;">'
-                f'<div style="font-size:.48em;color:#c97b6e;letter-spacing:.8px;text-transform:uppercase;line-height:1.2;">Next</div>'
+                f'<div style="font-size:.48em;color:#7c3aed;letter-spacing:.8px;text-transform:uppercase;line-height:1.2;">Next</div>'
                 f'<div style="font-size:.92em;font-weight:700;color:#f0e8e5;line-height:1.3;">{iv_val}d</div></div>'
                 # EF pill
                 f'<div style="background:#1e2235;border:1px solid #2d3348;border-radius:8px;'
                 f'padding:3px 10px;text-align:center;flex-shrink:0;">'
-                f'<div style="font-size:.48em;color:#c97b6e;letter-spacing:.8px;text-transform:uppercase;line-height:1.2;">EF</div>'
+                f'<div style="font-size:.48em;color:#7c3aed;letter-spacing:.8px;text-transform:uppercase;line-height:1.2;">EF</div>'
                 f'<div style="font-size:.92em;font-weight:700;color:#f0e8e5;line-height:1.3;">{ef_val:.2f}</div></div>'
                 f'</div>',
                 unsafe_allow_html=True
@@ -3073,16 +3426,16 @@ if st.session_state.active_qid:
                 sugg_html = q["suggestions"].replace('\n', '<br>')
                 st.markdown(
                     f'<div style="background:linear-gradient(135deg,#252840,#2d3348);'
-                    f'border-left:3px solid #e8a898;border-radius:0 10px 10px 0;'
+                    f'border-left:3px solid #c4b5fd;border-radius:0 10px 10px 0;'
                     f'padding:10px 14px;font-size:.8em;color:#f0e8e5;margin-bottom:8px;line-height:1.7;">'
                     f'<div style="font-size:.65em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;'
-                    f'color:#e8a898;margin-bottom:6px;">💡 AI Analysis</div>'
+                    f'color:#c4b5fd;margin-bottom:6px;">💡 AI Analysis</div>'
                     f'{sugg_html}</div>',
                     unsafe_allow_html=True
                 )
             if q.get('my_gap_analysis'):
                 st.markdown(
-                    f'<div style="background:#242838;border-left:3px solid #c97b6e;'
+                    f'<div style="background:#1e1b4b;border-left:3px solid #7c3aed;'
                     f'border-radius:0 10px 10px 0;padding:7px 12px;font-size:.8em;'
                     f'color:#fde8e3;margin-bottom:8px;line-height:1.6;">'
                     f'🔍 {q["my_gap_analysis"]}</div>',
@@ -3103,13 +3456,13 @@ if st.session_state.active_qid:
                             if stripped in ("PROBLEM", "EXAMPLE 1", "EXAMPLE 2", "CONSTRAINTS"):
                                 out.append(
                                     f'<div style="font-size:.6em;font-weight:700;letter-spacing:1px;'
-                                    f'text-transform:uppercase;color:#c97b6e;margin:12px 0 4px;">{stripped}</div>'
+                                    f'text-transform:uppercase;color:#7c3aed;margin:12px 0 4px;">{stripped}</div>'
                                 )
                             elif stripped.startswith(("Input:", "Output:", "Explanation:")):
                                 label, _, rest = stripped.partition(":")
                                 out.append(
                                     f'<div style="font-size:.83em;line-height:1.6;">'
-                                    f'<b style="color:#d4a898;">{label}:</b>'
+                                    f'<b style="color:#a78bfa;">{label}:</b>'
                                     f'<code style="background:#252840;color:#f0e8e5;padding:1px 6px;'
                                     f'border-radius:4px;font-size:.95em;">{rest.strip()}</code></div>'
                                 )
@@ -3132,7 +3485,7 @@ if st.session_state.active_qid:
                         f'<style>'
                         f'[data-testid="stSidebar"] [data-testid="stButton-gen_desc_{q["id"]}"] button,'
                         f'[data-testid="stSidebar"] button[kind] + [data-testid="gen_desc_{q["id"]}"] {{'
-                        f'  background: linear-gradient(135deg,#c97b6e,#b5615a) !important;'
+                        f'  background: linear-gradient(135deg,#7c3aed,#6d28d9) !important;'
                         f'  color: #fff !important; border: none !important;'
                         f'  box-shadow: 0 2px 8px rgba(201,123,110,.4) !important;'
                         f'}}'
@@ -3155,7 +3508,7 @@ if st.session_state.active_qid:
                             except Exception as e:
                                 st.error(f"Error: {e}")
                     st.markdown(
-                        '<p style="font-size:.8em;color:#d4a898;font-style:italic;">'
+                        '<p style="font-size:.8em;color:#a78bfa;font-style:italic;">'
                         'Click to auto-generate a full problem description with examples.</p>',
                         unsafe_allow_html=True,
                     )
@@ -3171,7 +3524,7 @@ if st.session_state.active_qid:
                     st.session_state[hint_key] = True
                 if st.session_state[hint_key]:
                     st.markdown(
-                        f'<div style="background:#242838;border-left:3px solid #f59e0b;'
+                        f'<div style="background:#1e1b4b;border-left:3px solid #f59e0b;'
                         f'border-radius:0 10px 10px 0;padding:10px 14px;font-size:.85em;'
                         f'color:#fef3c7;margin-bottom:10px;line-height:1.7;">'
                         f'<div style="font-size:.6em;font-weight:700;letter-spacing:.8px;'
@@ -3259,29 +3612,42 @@ if st.session_state.active_qid:
                                disabled=not _has_prev, help="Previous question"):
                 _nav_prev_next(-1)
 
-            if col_save.button("💾 Save", type="primary", use_container_width=True):
+            if col_save.button("💾 Save", key=f"prac_save_{q['id']}", type="primary", use_container_width=True):
                 hint_used_flag = st.session_state.get(f"hint_used_{q['id']}", False)
-                requests.post(f"{API_URL}/questions/{q['id']}/log",
-                              json={"logic": new_logic, "code": new_code, "time_taken": elapsed,
-                                    "date": _local_today(), "hint_used": hint_used_flag},
-                              headers=auth_headers())
-                requests.patch(f"{API_URL}/questions/{q['id']}/notes",
-                               json={"notes": new_notes, "my_gap_analysis": new_gap},
-                               headers=auth_headers())
+                with st.spinner("Saving…"):
+                    try:
+                        requests.post(
+                            f"{API_URL}/questions/{q['id']}/log",
+                            json={"logic": new_logic, "code": new_code,
+                                  "time_taken": elapsed, "date": _local_today(),
+                                  "hint_used": hint_used_flag},
+                            headers=auth_headers(),
+                            timeout=10,
+                        )
+                        requests.patch(
+                            f"{API_URL}/questions/{q['id']}/notes",
+                            json={"notes": new_notes, "my_gap_analysis": new_gap},
+                            headers=auth_headers(),
+                            timeout=10,
+                        )
+                    except Exception:
+                        st.error("Save failed — check backend connection.")
+                        st.stop()
+                invalidate_cache()
                 st.session_state.ai_pending_qid   = q['id']
                 st.session_state.ai_pending_since = time.time()
                 st.session_state.pop(f"hint_used_{q['id']}", None)
                 st.rerun()
 
-            if col_close.button("✖ Close", use_container_width=True):
-                st.session_state.active_qid = None
-                st.session_state.nav_ids    = []
-                st.session_state.nav_mode   = None
-                st.session_state.pop('start_timestamp', None)
-                st.session_state.pop('ai_pending_qid', None)
-                st.session_state.pop('ai_pending_since', None)
-                st.session_state.pop(f"hint_used_{q['id']}", None)
-                st.session_state.pop(f"chat_{q['id']}", None)
+            if col_close.button("✖ Close", key=f"prac_close_{q['id']}", use_container_width=True):
+                st.session_state.active_qid    = None
+                st.session_state.view_last_qid = None
+                st.session_state.nav_ids       = []
+                st.session_state.nav_mode      = None
+                for _k in ('start_timestamp', 'ai_pending_qid', 'ai_pending_since',
+                           f"hint_used_{q['id']}", f"chat_{q['id']}"):
+                    st.session_state.pop(_k, None)
+                invalidate_cache()
                 st.rerun()
 
             if col_next.button("→", key="prac_next", use_container_width=True,
@@ -3310,7 +3676,7 @@ if st.session_state.active_qid:
                 '<div style="background:#181c2e;border:1px solid #2a2f45;border-radius:14px;'
                 'padding:10px 12px 8px 12px;margin-bottom:4px;">'
                 '<div style="font-size:.58em;font-weight:700;letter-spacing:1.2px;'
-                'text-transform:uppercase;color:#c97b6e;margin-bottom:8px;">🤖 AI Tutor</div>',
+                'text-transform:uppercase;color:#7c3aed;margin-bottom:8px;">🤖 AI Tutor</div>',
                 unsafe_allow_html=True,
             )
 
@@ -3382,24 +3748,27 @@ if st.session_state.active_qid:
 
             # ── send regular question ─────────────────────────────────────────
             if ask_clicked and user_question.strip():
-                history_snapshot = list(chat_msgs)   # capture before appending
+                history_snapshot = list(chat_msgs)
                 chat_msgs.append({"role": "user", "content": user_question.strip()})
-                try:
-                    resp = requests.post(
-                        f"{API_URL}/questions/{q['id']}/chat",
-                        json={
-                            "message":  user_question.strip(),
-                            "context":  _chat_context(),
-                            "history":  history_snapshot,
-                            "generate_variations": False,
-                        },
-                        headers=auth_headers(),
-                        timeout=20,
-                    )
-                    data  = resp.json() if resp.status_code == 200 else {}
-                    reply = data.get("reply", "AI unavailable.")
-                except Exception:
-                    reply = "Could not reach AI. Check your connection."
+                with st.spinner("Thinking…"):
+                    try:
+                        resp = requests.post(
+                            f"{API_URL}/questions/{q['id']}/chat",
+                            json={
+                                "message":  user_question.strip(),
+                                "context":  _chat_context(),
+                                "history":  history_snapshot,
+                                "generate_variations": False,
+                            },
+                            headers=auth_headers(),
+                            timeout=30,
+                        )
+                        data  = resp.json() if resp.status_code == 200 else {}
+                        reply = data.get("reply", "AI unavailable.")
+                    except requests.exceptions.Timeout:
+                        reply = "Request timed out — AI is taking too long. Try again."
+                    except Exception as e:
+                        reply = f"Could not reach AI: {e}"
                 chat_msgs.append({"role": "assistant", "content": reply, "is_variation": False})
                 st.rerun()
 
@@ -3408,22 +3777,25 @@ if st.session_state.active_qid:
                 label = f"Give me 3 variations of «{q['title']}»"
                 history_snapshot = list(chat_msgs)
                 chat_msgs.append({"role": "user", "content": label})
-                try:
-                    resp = requests.post(
-                        f"{API_URL}/questions/{q['id']}/chat",
-                        json={
-                            "message":  label,
-                            "context":  _chat_context(),
-                            "history":  history_snapshot,
-                            "generate_variations": True,
-                        },
-                        headers=auth_headers(),
-                        timeout=30,
-                    )
-                    data  = resp.json() if resp.status_code == 200 else {}
-                    reply = data.get("reply", "AI unavailable.")
-                except Exception:
-                    reply = "Could not reach AI. Check your connection."
+                with st.spinner("Generating variations…"):
+                    try:
+                        resp = requests.post(
+                            f"{API_URL}/questions/{q['id']}/chat",
+                            json={
+                                "message":  label,
+                                "context":  _chat_context(),
+                                "history":  history_snapshot,
+                                "generate_variations": True,
+                            },
+                            headers=auth_headers(),
+                            timeout=45,
+                        )
+                        data  = resp.json() if resp.status_code == 200 else {}
+                        reply = data.get("reply", "AI unavailable.")
+                    except requests.exceptions.Timeout:
+                        reply = "Request timed out — try again."
+                    except Exception as e:
+                        reply = f"Could not reach AI: {e}"
                 chat_msgs.append({"role": "assistant", "content": reply, "is_variation": True})
                 st.rerun()
 
@@ -3449,7 +3821,7 @@ if st.session_state.active_qid:
                     st.markdown(
                         '<hr style="border:none;border-top:1px solid #2d3348;margin:14px 0 10px;">'
                         '<div style="font-size:.6em;font-weight:700;letter-spacing:1px;'
-                        'text-transform:uppercase;color:#d4a898;margin-bottom:8px;">📝 Practice a Variation</div>',
+                        'text-transform:uppercase;color:#a78bfa;margin-bottom:8px;">📝 Practice a Variation</div>',
                         unsafe_allow_html=True,
                     )
 
@@ -3555,7 +3927,7 @@ if st.session_state.active_qid:
                             verd_col = "#86efac" if corr else "#f9a8d4"
                             verd_txt = "✅ Correct" if corr else "❌ Needs Work"
                             st.markdown(
-                                f'<div style="background:#242838;border:1px solid #2d3348;'
+                                f'<div style="background:#1e1b4b;border:1px solid #2d3348;'
                                 f'border-radius:12px;padding:12px 16px;margin-top:6px;">'
                                 f'<div style="display:flex;justify-content:space-between;'
                                 f'align-items:center;margin-bottom:8px;">'
@@ -3599,10 +3971,10 @@ if st.session_state.active_qid:
                     sugg_html = sugg_part.strip().replace('\n', '<br>')
 
                     st.markdown(
-                        f'<div style="background:#242838;border:1px solid #2d3348;'
+                        f'<div style="background:#1e1b4b;border:1px solid #2d3348;'
                         f'border-radius:14px;padding:14px;margin-top:10px;">'
                         f'<div style="font-size:.6em;font-weight:700;letter-spacing:1px;'
-                        f'text-transform:uppercase;color:#e8a898;margin-bottom:8px;">🤖 AI Analysis</div>'
+                        f'text-transform:uppercase;color:#c4b5fd;margin-bottom:8px;">🤖 AI Analysis</div>'
                         f'<div style="font-weight:700;font-size:.95em;color:{verdict_color};'
                         f'margin-bottom:10px;">{verdict_text}</div>'
                         + (
@@ -3620,7 +3992,7 @@ if st.session_state.active_qid:
                             if status else ""
                         )
                         + (
-                            f'<div style="border-left:3px solid #c97b6e;'
+                            f'<div style="border-left:3px solid #7c3aed;'
                             f'padding:10px 12px;background:#2d3348;border-radius:0 8px 8px 0;'
                             f'font-size:.82em;color:#fde8e3;line-height:1.7;">'
                             f'{sugg_html}</div>'
@@ -3640,9 +4012,9 @@ if st.session_state.active_qid:
                 elif elapsed_wait < 20:
                     # Still waiting — auto-refresh every 2.5 s (up to 8 times = 20 s)
                     st.markdown(
-                        '<div style="background:#242838;border:1px solid #2d3348;'
+                        '<div style="background:#1e1b4b;border:1px solid #2d3348;'
                         'border-radius:14px;padding:12px 14px;margin-top:10px;'
-                        'font-size:.85em;color:#d4a898;">⏳ AI analysis running…</div>',
+                        'font-size:.85em;color:#a78bfa;">⏳ AI analysis running…</div>',
                         unsafe_allow_html=True,
                     )
                     st_autorefresh(interval=2500, limit=8, key="ai_refresh")
