@@ -556,9 +556,37 @@ def _local_today() -> str:
 
 
 # ── INIT ──────────────────────────────────────────────────────────────────────
-for key, val in [("active_qid", None), ("view_last_qid", None), ("cal_year", _local_now().year), ("cal_month", _local_now().month)]:
+for key, val in [("active_qid", None), ("view_last_qid", None), ("cal_year", _local_now().year), ("cal_month", _local_now().month), ("nav_ids", []), ("nav_mode", None)]:
     if key not in st.session_state:
         st.session_state[key] = val
+
+
+def _open_question(qid: int, mode: str, nav_ids: list):
+    """Switch to a question in either practice or last-record mode."""
+    st.session_state.nav_ids  = nav_ids
+    st.session_state.nav_mode = mode
+    if mode == "practice":
+        st.session_state.active_qid    = qid
+        st.session_state.view_last_qid = None
+        st.session_state.pop("start_timestamp", None)
+    else:
+        st.session_state.view_last_qid = qid
+        st.session_state.active_qid    = None
+        # clear cached last-log so it re-fetches for the new question
+        st.session_state.pop(f"last_log_{qid}", None)
+
+
+def _nav_prev_next(direction: int):
+    """Navigate ±1 in nav_ids, preserving current mode."""
+    ids  = st.session_state.get("nav_ids", [])
+    mode = st.session_state.get("nav_mode", "practice")
+    cur  = st.session_state.active_qid if mode == "practice" else st.session_state.view_last_qid
+    if not ids or cur not in ids:
+        return
+    idx  = ids.index(cur) + direction
+    if 0 <= idx < len(ids):
+        _open_question(ids[idx], mode, ids)
+        st.rerun()
 
 
 # ── NOTIFICATION HELPERS ───────────────────────────────────────────────────────
@@ -885,16 +913,12 @@ with tabs[0]:
             with col_p:
                 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
                 if st.button("Practice →", key=f"sel_{row['id']}", use_container_width=True):
-                    st.session_state.active_qid   = int(row['id'])
-                    st.session_state.view_last_qid = None
-                    st.session_state.pop('start_timestamp', None)
+                    _open_question(int(row['id']), "practice", list(flt['id'].astype(int)))
                     st.rerun()
             with col_v:
                 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
                 if st.button("Last Record", key=f"last_{row['id']}", use_container_width=True):
-                    st.session_state.view_last_qid = int(row['id'])
-                    st.session_state.active_qid    = None
-                    st.session_state.pop('start_timestamp', None)
+                    _open_question(int(row['id']), "last_record", list(flt['id'].astype(int)))
                     st.rerun()
 
 
@@ -2868,13 +2892,22 @@ if st.session_state.get("view_last_qid") and not st.session_state.get("active_qi
                 st.session_state.view_last_qid = None
                 st.rerun()
         else:
-            # Header
+            # Header with position indicator
+            _lr_nav_ids2  = st.session_state.get("nav_ids", [])
+            _lr_idx2      = _lr_nav_ids2.index(qid_lr) + 1 if qid_lr in _lr_nav_ids2 else 0
+            _lr_total2    = len(_lr_nav_ids2)
+            _lr_pos_label = f"{_lr_idx2}/{_lr_total2}" if _lr_total2 else ""
             st.markdown(
-                f'<div style="font-size:1em;font-weight:800;padding:6px 0 6px;'
-                f'border-bottom:1px solid #252840;margin-bottom:10px;'
+                f'<div style="display:flex;align-items:center;gap:8px;'
+                f'padding:4px 0 8px;border-bottom:1px solid #252840;margin-bottom:10px;">'
+                f'<div style="flex:1;min-width:0;font-size:.95em;font-weight:800;'
                 f'background:linear-gradient(90deg,#e8a898,#c97b6e);'
-                f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;">'
-                f'📖 {rec["question_title"]}</div>',
+                f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;'
+                f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">📖 {rec["question_title"]}</div>'
+                + (f'<div style="background:#1e2235;border:1px solid #2d3348;border-radius:6px;'
+                   f'padding:2px 7px;font-size:.68em;color:#9ca3af;flex-shrink:0;">{_lr_pos_label}</div>'
+                   if _lr_pos_label else "")
+                + f'</div>',
                 unsafe_allow_html=True,
             )
 
@@ -2917,7 +2950,18 @@ if st.session_state.get("view_last_qid") and not st.session_state.get("active_qi
 
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-            lr_save, lr_close = st.columns(2)
+            _lr_nav_ids  = st.session_state.get("nav_ids", [])
+            _lr_cur_idx  = _lr_nav_ids.index(qid_lr) if qid_lr in _lr_nav_ids else -1
+            _lr_has_prev = _lr_cur_idx > 0
+            _lr_has_next = 0 <= _lr_cur_idx < len(_lr_nav_ids) - 1
+
+            lr_prev, lr_save, lr_close, lr_next = st.columns([0.14, 0.36, 0.36, 0.14])
+
+            if lr_prev.button("←", key="lr_prev", use_container_width=True,
+                              disabled=not _lr_has_prev, help="Previous question"):
+                st.session_state.pop(cache_key, None)
+                _nav_prev_next(-1)
+
             if lr_save.button("💾 Save", type="primary", use_container_width=True, key="lr_save"):
                 try:
                     r = requests.patch(
@@ -2928,7 +2972,6 @@ if st.session_state.get("view_last_qid") and not st.session_state.get("active_qi
                         timeout=8,
                     )
                     if r.status_code == 200:
-                        # Bust the cache so next open re-fetches
                         st.session_state.pop(cache_key, None)
                         st.success("Saved!")
                     else:
@@ -2938,8 +2981,15 @@ if st.session_state.get("view_last_qid") and not st.session_state.get("active_qi
 
             if lr_close.button("✖ Close", use_container_width=True, key="lr_close"):
                 st.session_state.view_last_qid = None
+                st.session_state.nav_ids  = []
+                st.session_state.nav_mode = None
                 st.session_state.pop(cache_key, None)
                 st.rerun()
+
+            if lr_next.button("→", key="lr_next", use_container_width=True,
+                              disabled=not _lr_has_next, help="Next question"):
+                st.session_state.pop(cache_key, None)
+                _nav_prev_next(1)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2977,7 +3027,12 @@ if st.session_state.active_qid:
         acc_color = "#86efac" if acc_val >= 80 else "#fcd34d" if acc_val >= 60 else "#f9a8d4"
 
         with st.sidebar:
-            # ── Compact header bar: title + timer + stats in one row ───────────
+            # ── Compact header bar: title + position + timer + stats in one row ─
+            _prac_nav_ids = st.session_state.get("nav_ids", [])
+            _prac_idx     = _prac_nav_ids.index(q['id']) + 1 if q['id'] in _prac_nav_ids else 0
+            _prac_total   = len(_prac_nav_ids)
+            _pos_label    = f"{_prac_idx}/{_prac_total}" if _prac_total else ""
+
             st.markdown(
                 f'<div style="display:flex;align-items:center;gap:8px;'
                 f'padding:4px 0 10px;border-bottom:1px solid #252840;margin-bottom:10px;flex-wrap:wrap;">'
@@ -2986,8 +3041,12 @@ if st.session_state.active_qid:
                 f'background:linear-gradient(90deg,#e8a898,#c97b6e);'
                 f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;'
                 f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">📝 {q["title"]}</div>'
+                # Position indicator
+                + (f'<div style="background:#1e2235;border:1px solid #2d3348;border-radius:6px;'
+                   f'padding:2px 7px;font-size:.68em;color:#9ca3af;flex-shrink:0;">{_pos_label}</div>'
+                   if _pos_label else "")
                 # Timer pill
-                f'<div style="background:#1e2235;border:1px solid #8b4a42;border-radius:8px;'
+                + f'<div style="background:#1e2235;border:1px solid #8b4a42;border-radius:8px;'
                 f'padding:3px 10px;text-align:center;flex-shrink:0;">'
                 f'<div style="font-size:.48em;color:#d4a898;letter-spacing:.8px;text-transform:uppercase;line-height:1.2;">Time</div>'
                 f'<div style="font-size:.92em;font-weight:800;letter-spacing:2px;color:#e8a898;line-height:1.3;">{mins:02d}:{secs:02d}</div></div>'
@@ -3189,7 +3248,17 @@ if st.session_state.active_qid:
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
             # ── Buttons ──────────────────────────────────────────────────────
-            col_save, col_close = st.columns(2)
+            _nav_ids  = st.session_state.get("nav_ids", [])
+            _cur_idx  = _nav_ids.index(q['id']) if q['id'] in _nav_ids else -1
+            _has_prev = _cur_idx > 0
+            _has_next = 0 <= _cur_idx < len(_nav_ids) - 1
+
+            col_prev, col_save, col_close, col_next = st.columns([0.14, 0.36, 0.36, 0.14])
+
+            if col_prev.button("←", key="prac_prev", use_container_width=True,
+                               disabled=not _has_prev, help="Previous question"):
+                _nav_prev_next(-1)
+
             if col_save.button("💾 Save", type="primary", use_container_width=True):
                 hint_used_flag = st.session_state.get(f"hint_used_{q['id']}", False)
                 requests.post(f"{API_URL}/questions/{q['id']}/log",
@@ -3206,12 +3275,18 @@ if st.session_state.active_qid:
 
             if col_close.button("✖ Close", use_container_width=True):
                 st.session_state.active_qid = None
+                st.session_state.nav_ids    = []
+                st.session_state.nav_mode   = None
                 st.session_state.pop('start_timestamp', None)
                 st.session_state.pop('ai_pending_qid', None)
                 st.session_state.pop('ai_pending_since', None)
                 st.session_state.pop(f"hint_used_{q['id']}", None)
                 st.session_state.pop(f"chat_{q['id']}", None)
                 st.rerun()
+
+            if col_next.button("→", key="prac_next", use_container_width=True,
+                               disabled=not _has_next, help="Next question"):
+                _nav_prev_next(1)
 
             # ── AI Hint Chat ──────────────────────────────────────────────────
             st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
