@@ -238,10 +238,19 @@ html, body, [data-testid="stAppViewContainer"] {
     font-size: .85em !important;
     padding: 0.22rem 0.65rem !important;
     line-height: 1.4 !important;
+    background: #1e2235 !important;
+    color: #e8a898 !important;
+    border: 1px solid #8b4a42 !important;
+}
+[data-testid="stSidebar"] .stButton > button:hover {
+    background: #2a2f45 !important;
+    color: #fde8e3 !important;
+    border-color: #c97b6e !important;
 }
 [data-testid="stSidebar"] [data-testid="baseButton-primary"] > button {
     background: linear-gradient(135deg,#c97b6e,#b5615a) !important;
-    border: none !important; color: #fff !important;
+    border: none !important;
+    color: #fff !important;
     box-shadow: 0 2px 8px rgba(201,123,110,.35) !important;
 }
 
@@ -2937,15 +2946,20 @@ if st.session_state.get("view_last_qid") and not st.session_state.get("active_qi
 #  SIDEBAR — PRACTICE PANEL
 # ══════════════════════════════════════════════════════════════════════════════
 if st.session_state.active_qid:
-    # Expand sidebar to 85 vw when a question is open for editing
+    # Expand sidebar to full width when a question is open; hide main bleed
     st.markdown("""
     <style>
     [data-testid="stSidebar"] {
-        min-width: 85vw !important;
-        max-width: 85vw !important;
+        min-width: 97vw !important;
+        max-width: 97vw !important;
     }
     [data-testid="stSidebar"] > div:first-child {
-        min-width: 85vw !important;
+        min-width: 97vw !important;
+        padding-top: .5rem;
+    }
+    section[data-testid="stMain"] {
+        visibility: hidden !important;
+        pointer-events: none !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -2963,45 +2977,35 @@ if st.session_state.active_qid:
         acc_color = "#86efac" if acc_val >= 80 else "#fcd34d" if acc_val >= 60 else "#f9a8d4"
 
         with st.sidebar:
-            # Header
+            # ── Compact header bar: title + timer + stats in one row ───────────
             st.markdown(
-                f'<div style="font-size:1em;font-weight:800;padding:6px 0 10px;'
-                f'border-bottom:1px solid #252840;margin-bottom:12px;'
+                f'<div style="display:flex;align-items:center;gap:8px;'
+                f'padding:4px 0 10px;border-bottom:1px solid #252840;margin-bottom:10px;flex-wrap:wrap;">'
+                # Title
+                f'<div style="flex:1;min-width:0;font-size:.9em;font-weight:800;'
                 f'background:linear-gradient(90deg,#e8a898,#c97b6e);'
-                f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;">'
-                f'📝 {q["title"]}</div>',
-                unsafe_allow_html=True
-            )
-
-            # Timer
-            st.markdown(
-                f'<div style="background:linear-gradient(135deg,#252840,#2d3348);'
-                f'border:1px solid #8b4a42;border-radius:14px;padding:10px 14px;'
-                f'text-align:center;margin-bottom:10px;">'
-                f'<div style="font-size:.6em;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#d4a898;">Session Time</div>'
-                f'<div style="font-size:2em;font-weight:800;letter-spacing:3px;'
-                f'background:linear-gradient(135deg,#e8a898,#c97b6e);'
-                f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;">'
-                f'{mins:02d}:{secs:02d}</div>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
-
-            # Stats grid
-            st.markdown(
-                f'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px;">'
-                f'  <div style="background:#242838;border:1px solid #2d3348;border-radius:10px;padding:8px 6px;text-align:center;">'
-                f'    <div style="font-size:.58em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#c97b6e;">Accuracy</div>'
-                f'    <div style="font-size:.95em;font-weight:700;color:{acc_color};margin-top:2px;">{acc_val:.0f}%</div>'
-                f'  </div>'
-                f'  <div style="background:#242838;border:1px solid #2d3348;border-radius:10px;padding:8px 6px;text-align:center;">'
-                f'    <div style="font-size:.58em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#c97b6e;">Interval</div>'
-                f'    <div style="font-size:.95em;font-weight:700;color:#f0e8e5;margin-top:2px;">{iv_val}d</div>'
-                f'  </div>'
-                f'  <div style="background:#242838;border:1px solid #2d3348;border-radius:10px;padding:8px 6px;text-align:center;">'
-                f'    <div style="font-size:.58em;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#c97b6e;">EF</div>'
-                f'    <div style="font-size:.95em;font-weight:700;color:#f0e8e5;margin-top:2px;">{ef_val:.2f}</div>'
-                f'  </div>'
+                f'-webkit-background-clip:text;-webkit-text-fill-color:transparent;'
+                f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">📝 {q["title"]}</div>'
+                # Timer pill
+                f'<div style="background:#1e2235;border:1px solid #8b4a42;border-radius:8px;'
+                f'padding:3px 10px;text-align:center;flex-shrink:0;">'
+                f'<div style="font-size:.48em;color:#d4a898;letter-spacing:.8px;text-transform:uppercase;line-height:1.2;">Time</div>'
+                f'<div style="font-size:.92em;font-weight:800;letter-spacing:2px;color:#e8a898;line-height:1.3;">{mins:02d}:{secs:02d}</div></div>'
+                # Accuracy pill
+                f'<div style="background:#1e2235;border:1px solid #2d3348;border-radius:8px;'
+                f'padding:3px 10px;text-align:center;flex-shrink:0;">'
+                f'<div style="font-size:.48em;color:#c97b6e;letter-spacing:.8px;text-transform:uppercase;line-height:1.2;">Acc</div>'
+                f'<div style="font-size:.92em;font-weight:700;color:{acc_color};line-height:1.3;">{acc_val:.0f}%</div></div>'
+                # Interval pill
+                f'<div style="background:#1e2235;border:1px solid #2d3348;border-radius:8px;'
+                f'padding:3px 10px;text-align:center;flex-shrink:0;">'
+                f'<div style="font-size:.48em;color:#c97b6e;letter-spacing:.8px;text-transform:uppercase;line-height:1.2;">Next</div>'
+                f'<div style="font-size:.92em;font-weight:700;color:#f0e8e5;line-height:1.3;">{iv_val}d</div></div>'
+                # EF pill
+                f'<div style="background:#1e2235;border:1px solid #2d3348;border-radius:8px;'
+                f'padding:3px 10px;text-align:center;flex-shrink:0;">'
+                f'<div style="font-size:.48em;color:#c97b6e;letter-spacing:.8px;text-transform:uppercase;line-height:1.2;">EF</div>'
+                f'<div style="font-size:.92em;font-weight:700;color:#f0e8e5;line-height:1.3;">{ef_val:.2f}</div></div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
@@ -3065,7 +3069,18 @@ if st.session_state.active_qid:
                     )
                     st.session_state[desc_key] = existing_desc
                 else:
-                    gen_col, _ = st.columns([0.4, 0.6])
+                    st.markdown(
+                        f'<style>'
+                        f'[data-testid="stSidebar"] [data-testid="stButton-gen_desc_{q["id"]}"] button,'
+                        f'[data-testid="stSidebar"] button[kind] + [data-testid="gen_desc_{q["id"]}"] {{'
+                        f'  background: linear-gradient(135deg,#c97b6e,#b5615a) !important;'
+                        f'  color: #fff !important; border: none !important;'
+                        f'  box-shadow: 0 2px 8px rgba(201,123,110,.4) !important;'
+                        f'}}'
+                        f'</style>',
+                        unsafe_allow_html=True,
+                    )
+                    gen_col, _ = st.columns([0.32, 0.68])
                     if gen_col.button("✨ Generate Description", key=f"gen_desc_{q['id']}", type="primary", use_container_width=True):
                         with st.spinner("Generating problem statement…"):
                             try:
