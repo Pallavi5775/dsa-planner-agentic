@@ -3264,8 +3264,14 @@ if st.session_state.active_qid:
                             f'{label}{_fmt_bubble(msg["content"])}</div></div>'
                         )
                 st.markdown(
-                    f'<div style="max-height:160px;overflow-y:auto;margin-bottom:8px;'
-                    f'padding-right:2px;">{bubbles}</div>',
+                    f'<div style="max-height:360px;overflow-y:auto;margin-bottom:8px;'
+                    f'padding-right:4px;scrollbar-width:thin;'
+                    f'scrollbar-color:#3d4566 #181c2e;">{bubbles}</div>'
+                    f'<style>'
+                    f'  .chat-scroll::-webkit-scrollbar{{width:4px}}'
+                    f'  .chat-scroll::-webkit-scrollbar-track{{background:#181c2e}}'
+                    f'  .chat-scroll::-webkit-scrollbar-thumb{{background:#3d4566;border-radius:4px}}'
+                    f'</style>',
                     unsafe_allow_html=True,
                 )
 

@@ -737,7 +737,7 @@ async def hint_chat(
             "..."
         )
         message = f"Generate 3 variations of '{q.title}'."
-        max_tokens, temperature = 500, 0.85
+        max_tokens, temperature = 800, 0.85
     else:
         context_lines = []
         if user_logic:
@@ -773,7 +773,7 @@ async def hint_chat(
             "Length rule: 2-3 sentences for cases 1, 3, 4. Up to 6 sentences or a tiny snippet for case 2.\n"
             "Never give away the full working solution. Never respond with ONLY questions to a direct question."
         )
-        max_tokens, temperature = 250, 0.55
+        max_tokens, temperature = 500, 0.55
 
     # Build messages: system + history + current
     messages = [{"role": "system", "content": system_prompt}]
@@ -861,7 +861,7 @@ async def pattern_chat(db: AsyncSession, pattern: str, message: str, generate_me
                 {"role": "system", "content": system_prompt},
                 {"role": "user",   "content": message},
             ],
-            max_tokens=300 if generate_memo else 180,
+            max_tokens=500 if generate_memo else 300,
             temperature=0.8 if generate_memo else 0.5,
         )
         reply = response.choices[0].message.content.strip()
