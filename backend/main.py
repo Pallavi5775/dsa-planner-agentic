@@ -18,7 +18,8 @@ async def _run_weekly_summaries() -> None:
         from backend.db.session import AsyncSessionLocal
         from backend.db.models import User
         from backend.services.github_storage import GitHubStorageService
-        from backend.services.ai_insights import generate_weekly_summary, has_api_key
+        from backend.services.ai_insights import has_api_key
+        from backend.services.agent import agentic_weekly_summary
         from sqlalchemy.future import select
 
         if not has_api_key():
@@ -51,7 +52,7 @@ async def _run_weekly_summaries() -> None:
                 if not week_sessions:
                     continue
 
-                summary_md = await generate_weekly_summary(week_sessions, user.github_username)
+                summary_md = await agentic_weekly_summary(week_sessions, user.github_username, user.id)
                 if summary_md:
                     await svc.commit_weekly_summary(summary_md, week_label)
             except Exception as e:
@@ -82,6 +83,7 @@ async def _run_daily_notifications() -> None:
         from backend.db.session import AsyncSessionLocal
         from backend.db.models import User, UserQuestionProgress, PracticeLog
         from backend.services.notifications import notify_user
+        from backend.services.ai_insights import has_api_key
         from sqlalchemy.future import select
 
         now = datetime.now(timezone.utc)
@@ -135,6 +137,18 @@ async def _run_daily_notifications() -> None:
                             "🔥 You're losing your streak! No practice logged today or yesterday. Jump back in now!",
                             "streak",
                         ))
+
+                    # Agentic study coach: personalized plan replaces the generic revision count message
+                    if has_api_key():
+                        try:
+                            from backend.services.agent import agentic_study_coach
+                            coach_msg = await agentic_study_coach(user.id, user.username)
+                            if coach_msg:
+                                # Replace the generic revision-count message with the agent's plan
+                                messages = [(m, t) for m, t in messages if t != "revisions"]
+                                messages.insert(0, (coach_msg, "revisions"))
+                        except Exception as ce:
+                            log.warning("Study coach failed for user_id=%s: %s", user.id, ce)
 
                     for message, notif_type in messages:
                         await notify_user(db, user, message, notif_type)

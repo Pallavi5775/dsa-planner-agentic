@@ -10,6 +10,9 @@ build/
 venv/
 env/
 .venv/
+myenv/
+.myenv
+
 
 # Environment variables
 .env

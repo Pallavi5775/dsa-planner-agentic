@@ -23,7 +23,7 @@ async def _validate_then_push(user_id: int, qid: int, session_data: dict) -> Non
         from backend.db.session import AsyncSessionLocal
         from backend.db.models import User as UserModel
         from backend.services.github_storage import GitHubStorageService
-        from backend.services.ai_insights import generate_session_insight, has_api_key
+        from backend.services.ai_insights import has_api_key
 
         # Step 1 — AI validate: saves accuracy/suggestions/revision_status to DB
         gap_analysis = ""
@@ -50,12 +50,13 @@ async def _validate_then_push(user_id: int, qid: int, session_data: dict) -> Non
         committed = await svc.commit_session(session_data)
         log.info("[session] session commit=%s for %s", committed, q)
 
-        # Step 3 — generate and commit AI insight markdown
+        # Step 3 — generate and commit AI insight markdown (agentic: queries history before writing)
         if not has_api_key():
             log.info("[session] ANTHROPIC_API_KEY not set — skipping insight")
         elif committed:
             try:
-                insight_md = await generate_session_insight(session_data)
+                from backend.services.agent import agentic_session_insight
+                insight_md = await agentic_session_insight(session_data, user_id)
                 ok = await svc.commit_insight(insight_md, session_data["date"], q)
                 log.info("[session] insight commit=%s for %s", ok, q)
             except Exception as ie:
@@ -141,6 +142,7 @@ async def add_log(
     # Build the session payload for GitHub
     latest = result["logs"][-1] if result.get("logs") else {}
     session_data = {
+        "question_id":        qid,
         "date":               latest.get("date", ""),
         "question":           result.get("title", ""),
         "pattern":            result.get("pattern", ""),
