@@ -3199,13 +3199,7 @@ if st.session_state.active_qid:
                 st.rerun()
 
             # ── AI Hint Chat ──────────────────────────────────────────────────
-            st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-            st.markdown(
-                '<div style="font-size:.6em;font-weight:700;letter-spacing:1px;'
-                'text-transform:uppercase;color:#d4a898;margin-bottom:6px;">'
-                '🤖 Ask AI Tutor</div>',
-                unsafe_allow_html=True,
-            )
+            st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
             chat_key = f"chat_{q['id']}"
             if chat_key not in st.session_state:
@@ -3221,40 +3215,49 @@ if st.session_state.active_qid:
                 text = text.replace("\n", "<br>")
                 return text
 
-            # ── conversation bubbles ──────────────────────────────────────────
+            # ── compact chat card ─────────────────────────────────────────────
+            st.markdown(
+                '<div style="background:#181c2e;border:1px solid #2a2f45;border-radius:14px;'
+                'padding:10px 12px 8px 12px;margin-bottom:4px;">'
+                '<div style="font-size:.58em;font-weight:700;letter-spacing:1.2px;'
+                'text-transform:uppercase;color:#c97b6e;margin-bottom:8px;">🤖 AI Tutor</div>',
+                unsafe_allow_html=True,
+            )
+
+            # bubbles
             if chat_msgs:
                 bubbles = ""
-                for msg in chat_msgs[-10:]:
+                for msg in chat_msgs[-8:]:
                     is_variation = msg.get("is_variation", False)
                     if msg["role"] == "user":
                         bubbles += (
-                            f'<div style="display:flex;justify-content:flex-end;margin-bottom:7px;">'
-                            f'<div style="background:#7a3f38;color:#f0e8e5;'
-                            f'border-radius:14px 14px 2px 14px;'
-                            f'padding:8px 13px;font-size:.8em;max-width:82%;line-height:1.55;">'
+                            f'<div style="display:flex;justify-content:flex-end;margin-bottom:5px;">'
+                            f'<div style="background:#5c2d29;color:#fde8e3;'
+                            f'border-radius:12px 12px 2px 12px;'
+                            f'padding:5px 10px;font-size:.77em;max-width:80%;line-height:1.5;">'
                             f'{_fmt_bubble(msg["content"])}</div></div>'
                         )
                     else:
-                        bubble_bg    = "#1a3a2a" if is_variation else "#242838"
-                        bubble_border = "#22c55e" if is_variation else "#8b4a42"
-                        bubble_label  = '<span style="font-size:.65em;color:#86efac;font-weight:700;display:block;margin-bottom:4px;">🔀 VARIATIONS</span>' if is_variation else ""
+                        bg     = "#0f2d1f" if is_variation else "#1e2235"
+                        border = "#22c55e" if is_variation else "#3d4566"
+                        label  = '<span style="font-size:.6em;color:#86efac;font-weight:700;display:block;margin-bottom:3px;">🔀 VARIATIONS</span>' if is_variation else ""
                         bubbles += (
-                            f'<div style="display:flex;justify-content:flex-start;margin-bottom:7px;">'
-                            f'<div style="background:{bubble_bg};border:1px solid {bubble_border};'
-                            f'color:#f3e8ff;border-radius:14px 14px 14px 2px;'
-                            f'padding:8px 13px;font-size:.8em;max-width:88%;line-height:1.6;">'
-                            f'{bubble_label}{_fmt_bubble(msg["content"])}</div></div>'
+                            f'<div style="display:flex;justify-content:flex-start;margin-bottom:5px;">'
+                            f'<div style="background:{bg};border:1px solid {border};'
+                            f'color:#dde6ff;border-radius:12px 12px 12px 2px;'
+                            f'padding:5px 10px;font-size:.77em;max-width:86%;line-height:1.55;">'
+                            f'{label}{_fmt_bubble(msg["content"])}</div></div>'
                         )
                 st.markdown(
-                    f'<div style="background:#151827;border:1px solid #2d3348;border-radius:12px;'
-                    f'padding:10px;margin-bottom:8px;max-height:280px;overflow-y:auto;">'
-                    f'{bubbles}</div>',
+                    f'<div style="max-height:160px;overflow-y:auto;margin-bottom:8px;'
+                    f'padding-right:2px;">{bubbles}</div>',
                     unsafe_allow_html=True,
                 )
 
+            st.markdown("</div>", unsafe_allow_html=True)
+
             # ── build shared context payload ──────────────────────────────────
             def _chat_context():
-                # Ace editor stores value in new_code (local); fall back to session_state key
                 code_val = new_code if 'new_code' in dir() else st.session_state.get("code_input", "")
                 return {
                     "logic":        st.session_state.get("logic_input", ""),
@@ -3264,22 +3267,22 @@ if st.session_state.active_qid:
                     "accuracy":     q.get("accuracy"),
                 }
 
-            # ── input row ─────────────────────────────────────────────────────
-            chat_col_in, chat_col_btn = st.columns([0.76, 0.24])
+            # ── single-row: input | Ask | Variations ─────────────────────────
+            chat_col_in, chat_col_ask, chat_col_var = st.columns([0.60, 0.18, 0.22])
             with chat_col_in:
                 user_question = st.text_input(
                     "chat_q", key=f"chat_input_{q['id']}",
                     label_visibility="collapsed",
-                    placeholder="Ask anything… e.g. which data structure? why O(n log n)?"
+                    placeholder="Ask anything about this problem…"
                 )
-            with chat_col_btn:
-                ask_clicked = st.button("Ask", key=f"chat_ask_{q['id']}", use_container_width=True)
-
-            var_clicked = st.button(
-                "🔀 Get 3 Variations", key=f"chat_var_{q['id']}",
-                use_container_width=True,
-                help="Ask the AI to generate 3 related problems that practise the same pattern",
-            )
+            with chat_col_ask:
+                ask_clicked = st.button("Ask ↵", key=f"chat_ask_{q['id']}", use_container_width=True)
+            with chat_col_var:
+                var_clicked = st.button(
+                    "🔀 Variations", key=f"chat_var_{q['id']}",
+                    use_container_width=True,
+                    help="Generate 3 related problems on the same pattern",
+                )
 
             # ── send regular question ─────────────────────────────────────────
             if ask_clicked and user_question.strip():
@@ -3492,7 +3495,13 @@ if st.session_state.active_qid:
                         else "#f9a8d4"
                     )
 
-                    sugg_html = (q.get("suggestions") or "").replace('\n', '<br>')
+                    raw_sugg = (q.get("suggestions") or "")
+                    if "##CORRECTED_CODE##" in raw_sugg:
+                        sugg_part, corrected_part = raw_sugg.split("##CORRECTED_CODE##", 1)
+                    else:
+                        sugg_part, corrected_part = raw_sugg, ""
+                    sugg_html = sugg_part.strip().replace('\n', '<br>')
+
                     st.markdown(
                         f'<div style="background:#242838;border:1px solid #2d3348;'
                         f'border-radius:14px;padding:14px;margin-top:10px;">'
@@ -3524,6 +3533,13 @@ if st.session_state.active_qid:
                         + '</div>',
                         unsafe_allow_html=True,
                     )
+                    if corrected_part.strip():
+                        st.markdown(
+                            '<p style="font-size:.62em;font-weight:700;letter-spacing:1px;'
+                            'text-transform:uppercase;color:#86efac;margin:12px 0 4px;">🛠 Corrected Code</p>',
+                            unsafe_allow_html=True,
+                        )
+                        st.code(corrected_part.strip(), language="python")
 
                 elif elapsed_wait < 20:
                     # Still waiting — auto-refresh every 2.5 s (up to 8 times = 20 s)

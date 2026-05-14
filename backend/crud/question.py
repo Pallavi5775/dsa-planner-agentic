@@ -396,8 +396,8 @@ async def validate_question(db: AsyncSession, qid: int, user_id: int):
     hint_text = q.hint or "(none)"
 
     prompt = f"""
-You are an expert DSA Tutor and Spaced Repetition System (SRS).
-Your task is to analyze a student's session and update the question metadata.
+You are a warm, encouraging DSA mentor who genuinely wants to see every student grow.
+Your job is to analyse what the student actually wrote — their code, logic, and notes — and give them honest, supportive feedback that builds confidence while helping them improve.
 
 ### INPUT DATA (Current Question Object):
 {json.dumps(question_dict, ensure_ascii=False)}
@@ -405,50 +405,56 @@ Your task is to analyze a student's session and update the question metadata.
 ### STUDENT'S SELF-REFLECTION (for context only — do NOT use gap_analysis to affect accuracy):
 - **Notes (key insights the student wrote):** {p.notes or "(none)"}
 - **My Gap Analysis (student's own weakness assessment — informational only, does NOT affect accuracy score):** {p.my_gap_analysis or "(none)"}
-- **Hint used this session:** {"YES — the student viewed the hint before/during solving. Apply up to -15 points to accuracy to reflect reduced independence. Hint was: " + hint_text if hint_used_this_session else "No"}
+- **Hint used this session:** {"YES — the student used the hint. Apply up to -10 points to accuracy. Hint was: " + hint_text if hint_used_this_session else "No"}
 
 ### TASK 1: VALIDATION
 - If logic AND code AND notes are all empty or gibberish, mark `correct = false`.
-- If the student attempts a solution but uses the wrong strategy, mark `correct = false` but acknowledge the valid attempt.
+- If the student made a genuine attempt — even if incomplete or partially wrong — mark `correct = true` and focus feedback on what to refine next.
 
-### TASK 2: TECHNICAL ANALYSIS
-- Code Quality: Evaluate the student's code from the latest log — correctness, implementation clarity, edge case handling, and time/space complexity.
-- Strategy Matching: Compare the student's logic and code against the optimal strategy for the {q.pattern} pattern and problem {q.title}.
-- Notes Quality: Do the `notes` capture the core insight of the pattern? If yes, add up to +5 points.
-- The "Why" Analysis:
-      - If Correct: Explain why this approach leads to the correct solution and what makes it optimal.
-      - If Incorrect: Explain the logical flaw precisely — what assumption broke and why.
-- Complexity Check: Verify if the time complexity matches optimal O(n log n) or O(n).
+### TASK 2: ANALYSE THE STUDENT'S OWN CODE (do NOT compare against any "optimal" strategy)
+- Read the student's code and logic as submitted.
+- Identify what is working correctly in their approach — be specific and genuine.
+- Identify one or two concrete areas where their specific implementation can be improved (e.g. an off-by-one, a missing edge case, an unused variable).
+- Notes Quality: Do the `notes` capture a useful insight about the problem? If yes, add up to +5 points.
+- DO NOT penalise the student for not using a particular algorithm or pattern. Judge only whether their own approach is internally correct and clear.
 
 ### TASK 3: ASSESSMENT ONLY (backend handles all SRS scheduling)
-1. accuracy: 0-100. Score is based ONLY on code quality (correctness, edge cases, complexity), logic clarity, and notes quality. gap_analysis MUST NOT influence this score. Add the notes bonus (+5 max). Cap at 100.
-2. correct: true if the approach and code are logically valid, false otherwise.
-3. revision_status: "Mastered" if accuracy > 90%, "Needs Work" if accuracy < 60%, "Pending" if gibberish.
-4. suggestions: A detailed 4-6 sentence analysis covering:
-   (a) What the student did well — cite specific parts of their logic or code.
-   (b) The key issue or gap found — be precise, not vague.
-   (c) WHY the accuracy score was assigned — e.g. "The score of 72% reflects a valid two-pointer approach but incorrect handling of duplicates and O(n²) fallback in the inner loop."
-   (d) Whether the student's own gap analysis was accurate or missed the real issue.
-   (e) One concrete next-practice focus to close the identified gap.
-5. gap_analysis (HTML string): Structured HTML with four labeled sections separated by line breaks:
-   "<b>Score Reasoning:</b> [explain exactly why this % was given — cite specific strengths that boosted the score and specific weaknesses that reduced it]<br><br>
-    <b>Observations:</b> [what the student's logic, code, and self-analysis reveal about their current understanding level]<br><br>
-    <b>Pattern Gaps:</b> [what specific pattern knowledge, technique, or edge case handling is missing or shaky]<br><br>
-    <b>Next Focus:</b> [one concrete, actionable improvement to target in the very next practice session]"
+1. accuracy: 0-100. Base the score on: does the student's own code/logic solve the problem they attempted? Reward genuine effort and partial correctness generously. Add the notes bonus (+5 max). Cap at 100.
+2. correct: true if the student made a real attempt with some valid reasoning; false only if submission is empty or completely nonsensical.
+3. revision_status: "Mastered" if accuracy >= 90%, "Needs Work" if accuracy < 60%, else omit (backend will decide).
+4. suggestions: 4-6 encouraging sentences that:
+   (a) Open with a genuine strength — cite something specific from their code or logic.
+   (b) Name one concrete thing to fix or improve in their own code.
+   (c) Explain why the score was given in a motivating way ("Your score of 74% reflects solid structure and clear thinking — tightening the edge-case check will push this even higher.").
+   (d) Briefly note whether their self-analysis was on point.
+   (e) End with one specific, achievable next step that excites rather than overwhelms.
+5. gap_analysis (HTML string): Structured HTML with four sections:
+   "<b>What You Did Well:</b> [cite specific strengths from the student's actual code/logic — be genuine]<br><br>
+    <b>One Thing to Sharpen:</b> [one focused, kind observation about what to improve in their own code]<br><br>
+    <b>Score Reasoning:</b> [explain the % in an encouraging way — highlight what earned the points]<br><br>
+    <b>Your Next Win:</b> [one concrete, achievable practice goal that builds on what they already have]"
+
+### TASK 4: CODE CORRECTION (only when the student's code has a bug)
+- If the student's code has a bug or incorrect line(s), provide a corrected version that fixes ONLY the specific broken part.
+- Keep every other line of their code exactly as they wrote it — variable names, structure, logic flow, everything.
+- Do NOT rewrite or restructure. Surgical fix only.
+- If the code is correct, set `corrected_code` to null.
 
 DO NOT calculate ease_factor, interval_days, or next_revision. The backend computes these.
+DO NOT mention "optimal strategy", "greedy", or any algorithm the student did not themselves use.
 
 ### JSON RESPONSE REQUIREMENTS:
 Return ONLY a valid JSON object. No markdown. No preamble.
 {{
     "correct": boolean,
-    "gap_analysis": "HTML string with Score Reasoning, Observations, Pattern Gaps, Next Focus sections",
+    "gap_analysis": "HTML string with the four sections above",
     "gap_explanation": "Plain text version of the gap analysis",
-    "correction_suggestion": "The optimal implementation hint...",
+    "correction_suggestion": "One sentence describing exactly which line was wrong and what was fixed — nothing more",
+    "corrected_code": "The student's full code with only the buggy line(s) fixed, or null if code was correct",
     "updated_fields": {{
         "accuracy": float,
         "revision_status": "string",
-        "suggestions": "4-6 sentence detailed analysis with score reasoning"
+        "suggestions": "4-6 encouraging sentences as described above"
     }}
 }}
 """
@@ -463,7 +469,7 @@ Return ONLY a valid JSON object. No markdown. No preamble.
                 {"role": "user", "content": prompt},
             ],
             response_format={"type": "json_object"},
-            max_tokens=1800,
+            max_tokens=2400,
             temperature=0,
         )
 
@@ -476,7 +482,11 @@ Return ONLY a valid JSON object. No markdown. No preamble.
             correct = data.get("correct", False)
 
             p.accuracy = uf.get("accuracy", p.accuracy)
-            p.suggestions = uf.get("suggestions", p.suggestions)
+            suggestions_text = uf.get("suggestions", p.suggestions) or ""
+            corrected = data.get("corrected_code")
+            if corrected:
+                suggestions_text = suggestions_text + "\n\n##CORRECTED_CODE##\n" + corrected
+            p.suggestions = suggestions_text
             p.coverage_status = "Covered"
             p.revision_status = uf.get("revision_status", "Mastered" if correct else "Needs Work")
 
